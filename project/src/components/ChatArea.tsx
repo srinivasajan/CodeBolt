@@ -10,6 +10,7 @@ interface ChatAreaProps {
   chatId: string | null
   onRegenerate?: () => void
   onPreview?: (code: string) => void
+  onFork?: (id: string) => void
 }
 
 export function ChatArea({
@@ -19,6 +20,7 @@ export function ChatArea({
   chatId,
   onRegenerate,
   onPreview,
+  onFork,
 }: ChatAreaProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -143,6 +145,7 @@ export function ChatArea({
                   : undefined
               }
               onPreview={onPreview}
+              onFork={onFork}
             />
           ))}
           <div ref={bottomRef} className="h-4" />

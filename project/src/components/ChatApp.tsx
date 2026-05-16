@@ -16,6 +16,7 @@ import { useMessages } from '@/hooks/useMessages'
 import { cn } from '@/lib/utils'
 import type { Chat } from '@/types'
 import { NVIDIA_MODELS } from '@/types'
+import { supabase } from '@/lib/supabase'
 
 export default function ChatApp() {
   const navigate = useNavigate()
@@ -163,6 +164,47 @@ export default function ChatApp() {
     toast.success('Chat exported successfully')
   }, [messages, activeChat])
 
+  const handleForkChat = useCallback(async (messageId: string) => {
+    if (!activeChatId || !activeChat) return
+
+    const messageIndex = messages.findIndex(m => m.id === messageId)
+    if (messageIndex === -1) return
+
+    // Slice messages up to the chosen message
+    const forkedMessages = messages.slice(0, messageIndex + 1)
+
+    // Create a new chat
+    const newChat = await createChat(activeChat.model)
+    if (!newChat) {
+      toast.error('Failed to create branched chat')
+      return
+    }
+
+    // Rename the new chat
+    const newTitle = `${activeChat.title || 'Chat'} (Fork)`
+    await renameChat(newChat.id, newTitle)
+
+    // Insert the messages into the new chat
+    const messagesToInsert = forkedMessages.map(m => ({
+      chat_id: newChat.id,
+      role: m.role,
+      content: m.content,
+      created_at: m.created_at
+    }))
+
+    const { error } = await supabase.from('messages').insert(messagesToInsert)
+
+    if (error) {
+      console.error('Error copying messages:', error)
+      toast.error('Failed to copy messages to new chat')
+      return
+    }
+
+    // Switch to the new chat
+    setActiveChatId(newChat.id)
+    toast.success('Chat branched successfully!')
+  }, [activeChatId, activeChat, messages, createChat, renameChat])
+
   // Auto-select first chat
   useEffect(() => {
     if (!chatsLoading && chats.length > 0 && !activeChatId) {
@@ -264,6 +306,7 @@ export default function ChatApp() {
               chatId={activeChatId}
               onRegenerate={handleRegenerate}
               onPreview={(code) => setPreviewCode(code)}
+              onFork={handleForkChat}
             />
 
             {/* Input */}

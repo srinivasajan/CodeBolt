@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Copy, Check, RefreshCw, User, Zap } from 'lucide-react'
+import { Copy, Check, RefreshCw, User, Zap, GitFork } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CodeBlock } from '@/components/CodeBlock'
 import { cn } from '@/lib/utils'
@@ -13,9 +13,10 @@ interface MessageBubbleProps {
   onRegenerate?: () => void
   isLast?: boolean
   onPreview?: (code: string) => void
+  onFork?: (id: string) => void
 }
 
-export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPreview }: MessageBubbleProps) {
+export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPreview, onFork }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false)
 
   const copyMessage = useCallback(() => {
@@ -179,15 +180,28 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPr
               size="icon-xs"
               onClick={copyMessage}
               className="size-6 text-muted-foreground"
+              title="Copy message"
             >
               {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
             </Button>
+            {onFork && (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => onFork(message.id)}
+                className="size-6 text-muted-foreground"
+                title="Fork chat from here"
+              >
+                <GitFork className="size-3" />
+              </Button>
+            )}
             {isAssistant && isLast && onRegenerate && (
               <Button
                 variant="ghost"
                 size="icon-xs"
                 onClick={onRegenerate}
                 className="size-6 text-muted-foreground"
+                title="Regenerate response"
               >
                 <RefreshCw className="size-3" />
               </Button>
