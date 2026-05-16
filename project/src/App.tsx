@@ -115,7 +115,7 @@ export default function App() {
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
+      <div className="flex h-screen w-full overflow-hidden text-foreground">
         {/* Sidebar */}
         <ChatSidebar
           chats={chats}
@@ -129,16 +129,16 @@ export default function App() {
         />
 
         {/* Main area */}
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden border-l border-border/60 bg-background/80 backdrop-blur-xl">
           {/* Topbar */}
-          <div className="flex items-center justify-between border-b border-border bg-background/95 px-4 py-2 backdrop-blur-sm">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl">
+            <div className="flex items-center gap-3">
               {sidebarCollapsed && (
-                <div className="flex items-center gap-2 mr-2">
-                  <div className="flex size-6 items-center justify-center rounded bg-primary">
+                <div className="mr-1 flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-2.5 py-1.5 shadow-sm">
+                  <div className="flex size-6 items-center justify-center rounded-full bg-primary shadow-sm shadow-primary/20">
                     <Zap className="size-3.5 text-primary-foreground" />
                   </div>
-                  <span className="text-sm font-bold tracking-tight">CODEBOLT</span>
+                  <span className="text-xs font-semibold tracking-[0.24em] text-muted-foreground">CODEBOLT</span>
                 </div>
               )}
               <ModelSelector
@@ -147,17 +147,17 @@ export default function App() {
                 disabled={!activeChatId || isStreaming}
               />
               {isStreaming && (
-                <div className="flex items-center gap-1.5">
-                  <span className="relative flex size-1.5">
-                    <span className="animate-ping absolute inline-flex size-full rounded-full bg-green-400 opacity-75" />
-                    <span className="relative inline-flex size-1.5 rounded-full bg-green-500" />
+                <div className="flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-2.5 py-1.5 text-xs shadow-sm">
+                  <span className="relative flex size-2">
+                    <span className="absolute inline-flex size-full rounded-full bg-emerald-400 opacity-70 animate-ping" />
+                    <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
                   </span>
-                  <span className="text-xs text-muted-foreground">Generating…</span>
+                  <span className="text-muted-foreground">Generating…</span>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <SettingsPanel
                 settings={settings}
                 onChange={setSettings}
@@ -167,7 +167,7 @@ export default function App() {
                 variant="ghost"
                 size="icon-sm"
                 onClick={handleNewChat}
-                className="size-7 text-muted-foreground"
+                className="size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 <Plus className="size-4" />
               </Button>

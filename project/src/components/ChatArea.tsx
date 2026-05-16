@@ -48,30 +48,40 @@ export function ChatArea({
 
   if (!chatId) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
-        <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
-          <Zap className="size-8 text-primary" />
-        </div>
-        <div className="text-center">
-          <h2 className="text-2xl font-bold tracking-tight">CODEBOLT</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Your ultra-fast AI coding assistant. Select a chat or create a new one to start.
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-3 max-w-md w-full">
-          {[
-            'Write a React hook for debouncing',
-            'Explain TypeScript generics',
-            'Debug my async/await code',
-            'Optimize SQL query performance',
-          ].map((prompt) => (
-            <div
-              key={prompt}
-              className="cursor-default rounded-lg border border-border bg-card/50 px-3 py-2 text-xs text-muted-foreground hover:border-primary/40 hover:bg-card transition-colors"
-            >
-              {prompt}
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
+        <div className="w-full max-w-4xl rounded-[2rem] border border-border/60 bg-card/70 p-8 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.45)] backdrop-blur-xl md:p-10">
+          <div className="flex flex-col items-center gap-6 text-center">
+            <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-inset ring-primary/15">
+              <Zap className="size-8 text-primary" />
             </div>
-          ))}
+            <div className="max-w-xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                CODEBOLT
+              </p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">
+                An AI coding workspace that feels fast.
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground md:text-base">
+                Select a chat or create a new one to start building, debugging, and iterating with
+                streaming responses.
+              </p>
+            </div>
+            <div className="grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
+              {[
+                'Write a React hook for debouncing',
+                'Explain TypeScript generics',
+                'Debug my async/await code',
+                'Optimize SQL query performance',
+              ].map((prompt) => (
+                <div
+                  key={prompt}
+                  className="rounded-2xl border border-border/70 bg-background/60 px-4 py-3 text-left text-sm text-muted-foreground shadow-sm transition-colors hover:border-primary/30 hover:bg-background/90"
+                >
+                  {prompt}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -79,13 +89,15 @@ export function ChatArea({
 
   if (messages.length === 0 && !isStreaming) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
-        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
-          <Zap className="size-6 text-primary" />
-        </div>
-        <div className="text-center">
-          <p className="font-medium">New conversation</p>
-          <p className="mt-1 text-sm text-muted-foreground">Ask me anything about code</p>
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
+        <div className="rounded-[2rem] border border-border/60 bg-card/70 px-6 py-8 text-center shadow-[0_24px_60px_-30px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-inset ring-primary/15">
+            <Zap className="size-6 text-primary" />
+          </div>
+          <div className="mt-4">
+            <p className="text-base font-semibold">New conversation</p>
+            <p className="mt-1 text-sm text-muted-foreground">Ask me anything about code</p>
+          </div>
         </div>
       </div>
     )
@@ -116,7 +128,7 @@ export function ChatArea({
           userScrolledUp.current = distFromBottom > 100
         }}
       >
-        <div className="mx-auto max-w-3xl py-4">
+        <div className="mx-auto max-w-4xl py-6">
           {allMessages.map((msg, idx) => (
             <MessageBubble
               key={msg.id}

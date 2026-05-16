@@ -147,6 +147,16 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    background:
+      radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 10%, transparent), transparent 32%),
+      radial-gradient(circle at top right, color-mix(in oklab, var(--primary) 8%, transparent), transparent 26%),
+      linear-gradient(to bottom, color-mix(in oklab, var(--background) 96%, white), var(--background));
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 22%, transparent);
+    color: var(--foreground);
   }
 }

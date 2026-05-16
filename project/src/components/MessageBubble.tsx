@@ -30,7 +30,7 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast }: Me
   return (
     <div
       className={cn(
-        'group flex w-full gap-3 px-4 py-3',
+        'group flex w-full gap-3 px-4 py-3 sm:px-6',
         isUser ? 'justify-end' : 'justify-start'
       )}
     >
@@ -44,16 +44,16 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast }: Me
       {/* Content */}
       <div
         className={cn(
-          'flex max-w-[85%] flex-col gap-1',
+          'flex max-w-[90%] flex-col gap-2 sm:max-w-[80%]',
           isUser ? 'items-end' : 'items-start'
         )}
       >
         {isUser ? (
-          <div className="rounded-2xl rounded-tr-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
+          <div className="rounded-2xl rounded-tr-sm bg-primary px-4 py-3 text-sm text-primary-foreground shadow-lg shadow-primary/10 ring-1 ring-inset ring-white/10">
             <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
           </div>
         ) : (
-          <div className="w-full">
+          <div className="w-full rounded-2xl border border-border/60 bg-card/70 px-4 py-3 shadow-sm backdrop-blur-sm sm:px-5 sm:py-4">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
@@ -142,9 +142,7 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast }: Me
             >
               {message.content}
             </ReactMarkdown>
-            {isStreaming && (
-              <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-primary" />
-            )}
+            {isStreaming && <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-primary" />}
           </div>
         )}
 
