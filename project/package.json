@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.6",
+    "@codesandbox/sandpack-react": "^2.20.0",
     "@hookform/resolvers": "^5.2.2",
     "@supabase/supabase-js": "^2.105.4",
     "@tailwindcss/vite": "^4.2.1",

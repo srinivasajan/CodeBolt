@@ -9,6 +9,7 @@ interface ChatAreaProps {
   streamingContent: string
   chatId: string | null
   onRegenerate?: () => void
+  onPreview?: (code: string) => void
 }
 
 export function ChatArea({
@@ -17,6 +18,7 @@ export function ChatArea({
   streamingContent,
   chatId,
   onRegenerate,
+  onPreview,
 }: ChatAreaProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -140,6 +142,7 @@ export function ChatArea({
                   ? onRegenerate
                   : undefined
               }
+              onPreview={onPreview}
             />
           ))}
           <div ref={bottomRef} className="h-4" />

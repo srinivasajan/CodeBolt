@@ -12,9 +12,10 @@ interface MessageBubbleProps {
   isStreaming?: boolean
   onRegenerate?: () => void
   isLast?: boolean
+  onPreview?: (code: string) => void
 }
 
-export function MessageBubble({ message, isStreaming, onRegenerate, isLast }: MessageBubbleProps) {
+export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPreview }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false)
 
   const copyMessage = useCallback(() => {
@@ -97,7 +98,7 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast }: Me
                   }
 
                   return (
-                    <CodeBlock language={match?.[1] ?? 'text'}>
+                    <CodeBlock language={match?.[1] ?? 'text'} onPreview={onPreview}>
                       {String(children).replace(/\n$/, '')}
                     </CodeBlock>
                   )

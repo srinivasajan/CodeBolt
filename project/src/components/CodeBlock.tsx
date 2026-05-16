@@ -7,6 +7,7 @@ interface CodeBlockProps {
   language?: string
   children: string
   className?: string
+  onPreview?: (code: string) => void
 }
 
 const LANGUAGE_LABELS: Record<string, string> = {
@@ -57,7 +58,9 @@ function highlightCode(code: string, _language: string): string {
     .replace(/>/g, '&gt;')
 }
 
-export function CodeBlock({ language = 'text', children, className }: CodeBlockProps) {
+import { Play } from 'lucide-react'
+
+export function CodeBlock({ language = 'text', children, className, onPreview }: CodeBlockProps) {
   const [copied, setCopied] = useState(false)
 
   const copy = useCallback(() => {
@@ -68,6 +71,7 @@ export function CodeBlock({ language = 'text', children, className }: CodeBlockP
   }, [children])
 
   const label = LANGUAGE_LABELS[language.toLowerCase()] ?? language
+  const isPreviewable = ['jsx', 'tsx', 'js', 'ts', 'html'].includes(language.toLowerCase()) && onPreview
 
   return (
     <div className={cn('group relative my-4 overflow-hidden rounded-lg border border-border bg-muted/30', className)}>
@@ -79,14 +83,28 @@ export function CodeBlock({ language = 'text', children, className }: CodeBlockP
             {label || 'code'}
           </span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          onClick={copy}
-          className="size-6 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-        >
-          {copied ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
-        </Button>
+        <div className="flex items-center gap-1">
+          {isPreviewable && (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => onPreview!(children)}
+              className="size-6 text-emerald-500 opacity-0 transition-opacity group-hover:opacity-100 hover:text-emerald-400 hover:bg-emerald-500/10"
+              title="Run Preview"
+            >
+              <Play className="size-3 fill-current" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={copy}
+            className="size-6 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+            title="Copy Code"
+          >
+            {copied ? <Check className="size-3 text-green-500" /> : <Copy className="size-3" />}
+          </Button>
+        </div>
       </div>
 
       {/* Code */}

@@ -10,6 +10,7 @@ import { ChatArea } from '@/components/ChatArea'
 import { ChatInput } from '@/components/ChatInput'
 import { ModelSelector } from '@/components/ModelSelector'
 import { SettingsPanel } from '@/components/SettingsPanel'
+import { CodePreviewPanel } from '@/components/CodePreviewPanel'
 import { useChats } from '@/hooks/useChats'
 import { useMessages } from '@/hooks/useMessages'
 import type { Chat } from '@/types'
@@ -19,6 +20,7 @@ export default function ChatApp() {
   const navigate = useNavigate()
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [previewCode, setPreviewCode] = useState<string | null>(null)
 
   const {
     chats,
@@ -136,81 +138,92 @@ export default function ChatApp() {
         />
 
         {/* Main area */}
-        <div className="flex flex-1 flex-col overflow-hidden border-l border-border/60 bg-background/80 backdrop-blur-xl">
-          {/* Topbar */}
-          <div className="flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl">
-            <div className="flex items-center gap-3">
-              {sidebarCollapsed && (
-                <Link to="/" className="mr-1 flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-2.5 py-1.5 shadow-sm hover:bg-card/90 transition-colors">
-                  <div className="flex size-6 items-center justify-center rounded-full bg-primary shadow-sm shadow-primary/20">
-                    <Zap className="size-3.5 text-primary-foreground" />
+        <div className="flex flex-1 overflow-hidden">
+          {/* Chat Column */}
+          <div className={cn("flex flex-col h-full transition-all duration-300 border-l border-border/60 bg-background/80 backdrop-blur-xl", previewCode ? "w-1/2" : "w-full")}>
+            {/* Topbar */}
+            <div className="flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl shrink-0">
+              <div className="flex items-center gap-3">
+                {sidebarCollapsed && (
+                  <Link to="/" className="mr-1 flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-2.5 py-1.5 shadow-sm hover:bg-card/90 transition-colors">
+                    <div className="flex size-6 items-center justify-center rounded-full bg-primary shadow-sm shadow-primary/20">
+                      <Zap className="size-3.5 text-primary-foreground" />
+                    </div>
+                    <span className="text-xs font-semibold tracking-[0.24em] text-muted-foreground">CODEBOLT</span>
+                  </Link>
+                )}
+                <ModelSelector
+                  value={activeModel}
+                  onChange={handleModelChange}
+                  disabled={!activeChatId || isStreaming}
+                />
+                {isStreaming && (
+                  <div className="flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-2.5 py-1.5 text-xs shadow-sm">
+                    <span className="relative flex size-2">
+                      <span className="absolute inline-flex size-full rounded-full bg-emerald-400 opacity-70 animate-ping" />
+                      <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+                    </span>
+                    <span className="text-muted-foreground">Generating…</span>
                   </div>
-                  <span className="text-xs font-semibold tracking-[0.24em] text-muted-foreground">CODEBOLT</span>
-                </Link>
-              )}
-              <ModelSelector
-                value={activeModel}
-                onChange={handleModelChange}
-                disabled={!activeChatId || isStreaming}
-              />
-              {isStreaming && (
-                <div className="flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-2.5 py-1.5 text-xs shadow-sm">
-                  <span className="relative flex size-2">
-                    <span className="absolute inline-flex size-full rounded-full bg-emerald-400 opacity-70 animate-ping" />
-                    <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-                  </span>
-                  <span className="text-muted-foreground">Generating…</span>
-                </div>
-              )}
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <SettingsPanel
+                  settings={settings}
+                  onChange={setSettings}
+                  disabled={isStreaming}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleNewChat}
+                  className="size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+                >
+                  <Plus className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleLogout}
+                  className="size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+                  title="Logout"
+                >
+                  <LogOut className="size-4" />
+                </Button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <SettingsPanel
-                settings={settings}
-                onChange={setSettings}
-                disabled={isStreaming}
-              />
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={handleNewChat}
-                className="size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
-                <Plus className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={handleLogout}
-                className="size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
-                title="Logout"
-              >
-                <LogOut className="size-4" />
-              </Button>
-            </div>
+            {/* Chat area */}
+            <ChatArea
+              messages={messages}
+              isStreaming={isStreaming}
+              streamingContent={streamingContent}
+              chatId={activeChatId}
+              onRegenerate={handleRegenerate}
+              onPreview={(code) => setPreviewCode(code)}
+            />
+
+            {/* Input */}
+            <ChatInput
+              onSend={handleSend}
+              onStop={stopStreaming}
+              isStreaming={isStreaming}
+              disabled={!activeChatId}
+              placeholder={
+                activeChatId
+                  ? 'Message CODEBOLT... (Shift+Enter for newline)'
+                  : 'Create a new chat to start...'
+              }
+            />
           </div>
 
-          {/* Chat area */}
-          <ChatArea
-            messages={messages}
-            isStreaming={isStreaming}
-            streamingContent={streamingContent}
-            chatId={activeChatId}
-            onRegenerate={handleRegenerate}
-          />
-
-          {/* Input */}
-          <ChatInput
-            onSend={handleSend}
-            onStop={stopStreaming}
-            isStreaming={isStreaming}
-            disabled={!activeChatId}
-            placeholder={
-              activeChatId
-                ? 'Message CODEBOLT... (Shift+Enter for newline)'
-                : 'Create a new chat to start...'
-            }
-          />
+          {/* Preview Column */}
+          {previewCode && (
+            <div className="w-1/2 h-full border-l border-border/60">
+              <CodePreviewPanel code={previewCode} onClose={() => setPreviewCode(null)} />
+            </div>
+          )}
         </div>
       </div>
       <Toaster />
