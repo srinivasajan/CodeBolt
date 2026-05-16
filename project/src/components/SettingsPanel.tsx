@@ -11,6 +11,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { ChatSettings } from '@/types'
 import { DEFAULT_SETTINGS } from '@/types'
@@ -21,7 +28,41 @@ interface SettingsPanelProps {
   disabled?: boolean
 }
 
+const PERSONAS = [
+  {
+    id: 'default',
+    name: 'General Assistant',
+    prompt: DEFAULT_SETTINGS.systemPrompt,
+  },
+  {
+    id: 'frontend',
+    name: 'Frontend React Expert',
+    prompt: 'You are an expert Frontend Developer specializing in React, TypeScript, and Tailwind CSS. Always write clean, accessible, and performant UI code. Use modern React patterns (hooks, functional components). When generating complete apps, ensure they are visually stunning, responsive, and ready to be previewed.',
+  },
+  {
+    id: 'backend',
+    name: 'Backend Systems Engineer',
+    prompt: 'You are a Senior Backend Systems Engineer. Focus on scalable, secure, and efficient server-side code. Prioritize database optimization, clean API design (REST or GraphQL), and robust error handling. When writing Node.js, Python, or Go code, provide detailed comments on performance implications.',
+  },
+  {
+    id: 'data',
+    name: 'Data Scientist (Python)',
+    prompt: 'You are an expert Data Scientist and Python Developer. When asked about data, provide code using pandas, numpy, and matplotlib/plotly. Focus on statistical accuracy, data visualization best practices, and clean, readable code. Always explain the math or logic behind your algorithms.',
+  }
+]
+
 export function SettingsPanel({ settings, onChange, disabled }: SettingsPanelProps) {
+  // Find current persona based on exact prompt match, or 'custom'
+  const currentPersona = PERSONAS.find(p => p.prompt === settings.systemPrompt)?.id || 'custom'
+
+  const handlePersonaChange = (personaId: string) => {
+    if (personaId === 'custom') return
+    const persona = PERSONAS.find(p => p.id === personaId)
+    if (persona) {
+      onChange({ ...settings, systemPrompt: persona.prompt })
+    }
+  }
+
   return (
     <Sheet>
       <Tooltip>
@@ -90,22 +131,43 @@ export function SettingsPanel({ settings, onChange, disabled }: SettingsPanelPro
 
           <Separator />
 
-          {/* System Prompt */}
-          <div className="flex flex-col gap-2">
-            <Label className="text-sm font-medium">System Prompt</Label>
-            <Textarea
-              value={settings.systemPrompt}
-              onChange={(e) => onChange({ ...settings, systemPrompt: e.target.value })}
-              placeholder="You are a helpful assistant..."
-              className="min-h-[120px] resize-none text-xs"
-            />
+          {/* Personas / System Prompt */}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
+              <Label className="text-sm font-medium">AI Persona</Label>
+              <Select value={currentPersona} onValueChange={handlePersonaChange}>
+                <SelectTrigger className="w-full text-xs">
+                  <SelectValue placeholder="Select a persona" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PERSONAS.map(p => (
+                    <SelectItem key={p.id} value={p.id} className="text-xs">
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom" className="text-xs italic text-muted-foreground">
+                    Custom Prompt...
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-2 mt-2">
+              <Label className="text-sm font-medium text-muted-foreground">Custom Instructions</Label>
+              <Textarea
+                value={settings.systemPrompt}
+                onChange={(e) => onChange({ ...settings, systemPrompt: e.target.value })}
+                placeholder="You are a helpful assistant..."
+                className="min-h-[140px] resize-none text-xs"
+              />
+            </div>
           </div>
 
           <Button
             variant="outline"
             size="sm"
             onClick={() => onChange(DEFAULT_SETTINGS)}
-            className="w-full"
+            className="w-full mt-4"
           >
             Reset to Defaults
           </Button>
