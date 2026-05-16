@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Plus,
   MessageSquare,
@@ -146,12 +147,12 @@ export function ChatSidebar({
     <div className="flex h-full w-64 flex-col border-r border-border bg-sidebar">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-3">
-        <div className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
           <div className="flex size-7 items-center justify-center rounded-md bg-primary">
             <Zap className="size-4 text-primary-foreground" />
           </div>
           <span className="text-sm font-bold tracking-tight text-sidebar-foreground">CODEBOLT</span>
-        </div>
+        </Link>
         <div className="flex items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { Plus, Zap, LogOut } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
@@ -92,14 +92,14 @@ export default function ChatApp() {
   )
 
   const handleSend = useCallback(
-    (content: string) => {
+    (content: string, images?: string[]) => {
       if (!activeChatId) {
         toast.error('Please select or create a chat first')
         return
       }
       sendMessage(content, activeModel, (title) => {
         updateChatTitle(activeChatId, title)
-      })
+      }, images)
     },
     [activeChatId, activeModel, sendMessage, updateChatTitle]
   )
@@ -141,12 +141,12 @@ export default function ChatApp() {
           <div className="flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl">
             <div className="flex items-center gap-3">
               {sidebarCollapsed && (
-                <div className="mr-1 flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-2.5 py-1.5 shadow-sm">
+                <Link to="/" className="mr-1 flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-2.5 py-1.5 shadow-sm hover:bg-card/90 transition-colors">
                   <div className="flex size-6 items-center justify-center rounded-full bg-primary shadow-sm shadow-primary/20">
                     <Zap className="size-3.5 text-primary-foreground" />
                   </div>
                   <span className="text-xs font-semibold tracking-[0.24em] text-muted-foreground">CODEBOLT</span>
-                </div>
+                </Link>
               )}
               <ModelSelector
                 value={activeModel}

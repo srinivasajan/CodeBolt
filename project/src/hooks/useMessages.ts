@@ -29,14 +29,23 @@ export function useMessages(chatId: string | null) {
   }, [chatId])
 
   const sendMessage = useCallback(
-    async (content: string, model: string, onTitleUpdate?: (title: string) => void) => {
+    async (content: string, model: string, onTitleUpdate?: (title: string) => void, images?: string[]) => {
       if (!chatId || isStreaming) return
+
+      let finalContent = content
+      if (images && images.length > 0) {
+        const payload = [
+          ...(content ? [{ type: 'text', text: content }] : []),
+          ...images.map(img => ({ type: 'image_url', image_url: { url: img } }))
+        ]
+        finalContent = JSON.stringify(payload)
+      }
 
       const userMsg: Message = {
         id: crypto.randomUUID(),
         chat_id: chatId,
         role: 'user',
-        content,
+        content: finalContent,
         created_at: new Date().toISOString(),
       }
 
@@ -45,7 +54,7 @@ export function useMessages(chatId: string | null) {
       await supabase.from('messages').insert({
         chat_id: chatId,
         role: 'user',
-        content,
+        content: finalContent,
       })
 
       // Auto-generate title from first message

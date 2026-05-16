@@ -50,7 +50,31 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast }: Me
       >
         {isUser ? (
           <div className="rounded-2xl rounded-tr-sm bg-primary px-4 py-3 text-sm text-primary-foreground shadow-lg shadow-primary/10 ring-1 ring-inset ring-white/10">
-            <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+            {(() => {
+              try {
+                if (message.content.trim().startsWith('[') && message.content.trim().endsWith(']')) {
+                  const parsed = JSON.parse(message.content)
+                  if (Array.isArray(parsed)) {
+                    return (
+                      <div className="flex flex-col gap-3">
+                        {parsed.map((item: any, idx: number) => {
+                          if (item.type === 'text') {
+                            return <p key={idx} className="whitespace-pre-wrap leading-relaxed">{item.text}</p>
+                          }
+                          if (item.type === 'image_url') {
+                            return <img key={idx} src={item.image_url.url} alt="User attachment" className="max-w-[300px] w-full rounded-lg object-contain max-h-[300px] bg-black/10" />
+                          }
+                          return null
+                        })}
+                      </div>
+                    )
+                  }
+                }
+              } catch {
+                // fallback to normal text
+              }
+              return <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+            })()}
           </div>
         ) : (
           <div className="w-full rounded-2xl border border-border/60 bg-card/70 px-4 py-3 shadow-sm backdrop-blur-sm sm:px-5 sm:py-4">

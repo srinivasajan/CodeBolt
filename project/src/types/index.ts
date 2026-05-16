@@ -78,6 +78,12 @@ export const NVIDIA_MODELS: Model[] = [
     description: 'Google instruction model for coding',
     contextLength: 131072,
   },
+  {
+    id: 'meta/llama-3.2-90b-vision-instruct',
+    name: 'Llama 3.2 90B Vision',
+    description: 'Multimodal vision model for image understanding',
+    contextLength: 128000,
+  },
 ]
 
 export const DEFAULT_SETTINGS: ChatSettings = {

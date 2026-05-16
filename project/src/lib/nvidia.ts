@@ -6,7 +6,7 @@ const FALLBACK_MODEL = 'mistralai/mistral-small-4-119b-2603'
 
 export interface NvidiaMessage {
   role: string
-  content: string
+  content: string | any[]
 }
 
 export async function streamChat(
@@ -99,5 +99,18 @@ export async function streamChat(
 }
 
 export function messagesToNvidia(messages: Message[]): NvidiaMessage[] {
-  return messages.map((m) => ({ role: m.role, content: m.content }))
+  return messages.map((m) => {
+    let content: any = m.content
+    try {
+      if (m.content.trim().startsWith('[') && m.content.trim().endsWith(']')) {
+        const parsed = JSON.parse(m.content)
+        if (Array.isArray(parsed)) {
+          content = parsed
+        }
+      }
+    } catch {
+      // Fallback to string
+    }
+    return { role: m.role, content }
+  })
 }
