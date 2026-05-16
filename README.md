@@ -86,7 +86,15 @@ An ultra-fast, production-ready ChatGPT-style coding assistant powered by **NVID
 ### Landing Page
 - Navigate to `/` to see the product landing page
 - Review features and supported models
-- Click "Start Building" to enter your API key
+- Click "Enter NVIDIA Key" to enter your API key
+
+### How To Get Your NVIDIA API Key
+1. Open https://build.nvidia.com and sign in.
+2. Go to API Keys and create a new key.
+3. Copy the key value.
+4. Open CODEBOLT and click Enter NVIDIA Key.
+5. Paste the key and click Continue.
+6. Choose a model and start chatting.
 
 ### SaaS Flow
 1. **Landing Page** → Display product features
@@ -197,6 +205,7 @@ project/
 ### API Key Not Working
 - Verify key is from [build.nvidia.com](https://build.nvidia.com)
 - Check for leading/trailing whitespace
+- Ensure it starts with expected NVIDIA key format and was copied fully
 - Ensure model is available in your account
 
 ### Chat Not Persisting

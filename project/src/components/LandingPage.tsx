@@ -74,16 +74,27 @@ export default function LandingPage() {
         <div className="container mx-auto max-w-7xl px-4 sm:px-6">
           <div className="mx-auto max-w-3xl text-center">
             <h1 className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-6xl">
-              Ultra-Fast AI Coding Assistant
+              Access NVIDIA AI Models With Your Own API Key
             </h1>
             <p className="mt-6 text-lg text-muted-foreground sm:text-xl">
-              Production-ready ChatGPT-style interface powered by NVIDIA NIM APIs. Stream responses, switch models, and build faster than ever.
+              CODEBOLT is your clean interface for NVIDIA NIM. Bring your own NVIDIA API key, pick a model, and start building with real-time streaming responses.
             </p>
 
             {/* API Key Input Section */}
             {showApiInput ? (
               <div className="mt-8 mx-auto max-w-md rounded-2xl border border-border/20 bg-card/50 p-6 backdrop-blur-sm">
                 <h3 className="text-sm font-semibold mb-3">Enter Your NVIDIA API Key</h3>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Quick steps: 1) Open NVIDIA Build 2) Create key 3) Paste it below.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mb-3 w-full"
+                  onClick={() => window.open('https://build.nvidia.com', '_blank')}
+                >
+                  Open NVIDIA Build
+                </Button>
                 <Input
                   type="password"
                   placeholder="api-key-xxx..."
@@ -101,6 +112,7 @@ export default function LandingPage() {
                   <a href="https://build.nvidia.com" target="_blank" rel="noreferrer" className="text-primary hover:underline">
                     NVIDIA Build
                   </a>
+                  {' '}then paste it here and click Continue. Your key stays in your browser storage.
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -127,13 +139,31 @@ export default function LandingPage() {
             ) : (
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
                 <Button size="lg" onClick={handleStartBuild} className="gap-2">
-                  Start Building <ArrowRight className="h-5 w-5" />
+                  Enter NVIDIA Key <ArrowRight className="h-5 w-5" />
                 </Button>
                 <Button size="lg" variant="outline" onClick={() => window.open('https://github.com/srinivasajan/CodeBolt', '_blank')}>
                   View on GitHub
                 </Button>
               </div>
             )}
+
+            <div className="mt-8 rounded-2xl border border-border/20 bg-card/40 p-4 text-left sm:p-5">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-primary">How To Start</p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-border/20 bg-background/40 p-3">
+                  <p className="text-xs font-semibold text-foreground">1. Create NVIDIA Key</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Go to build.nvidia.com, sign in, and generate an API key.</p>
+                </div>
+                <div className="rounded-xl border border-border/20 bg-background/40 p-3">
+                  <p className="text-xs font-semibold text-foreground">2. Paste In CODEBOLT</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Click Enter NVIDIA Key and paste your personal key.</p>
+                </div>
+                <div className="rounded-xl border border-border/20 bg-background/40 p-3">
+                  <p className="text-xs font-semibold text-foreground">3. Choose Model And Chat</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Select any supported NVIDIA model and start coding.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -194,10 +224,10 @@ export default function LandingPage() {
       <section id="models" className="py-20 sm:py-32">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 text-center">
           <h2 className="text-3xl font-bold sm:text-4xl mb-6">
-            Powered by NVIDIA NIM
+            Powered by NVIDIA NIM, Controlled by You
           </h2>
           <p className="text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Switch between cutting-edge AI models. Each with unique strengths for coding, analysis, and creative work.
+            Use your own NVIDIA API key and switch between cutting-edge models. Each has unique strengths for coding, analysis, and creative work.
           </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
@@ -224,7 +254,7 @@ export default function LandingPage() {
           <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 p-8 sm:p-16 text-center">
             <h2 className="text-3xl font-bold sm:text-4xl mb-4">Ready to Build?</h2>
             <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Start using CODEBOLT in seconds. No setup required—just your NVIDIA API key.
+              Start using CODEBOLT in seconds. Get your NVIDIA API key from build.nvidia.com, paste it once, and start chatting.
             </p>
             <Button size="lg" onClick={handleLaunchApp} className="gap-2">
               Launch the App <ArrowRight className="h-5 w-5" />
