@@ -234,28 +234,59 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/10 py-8 sm:py-12">
+      <footer className="border-t border-border/10 py-12 sm:py-16">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70">
-                <Zap className="h-4 w-4 text-white" />
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70">
+                  <Zap className="h-4 w-4 text-white" />
+                </div>
+                <span className="font-semibold">CODEBOLT</span>
               </div>
-              <span className="font-semibold">CODEBOLT</span>
+              <p className="text-xs text-muted-foreground">Ultra-fast AI coding assistant powered by NVIDIA NIM.</p>
             </div>
-            <div className="flex gap-6">
-              <a href="https://github.com/srinivasajan/CodeBolt" target="_blank" rel="noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                GitHub
-              </a>
-              <a href="https://nvidia.com/nim" target="_blank" rel="noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                NVIDIA NIM
-              </a>
-              <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Supabase
-              </a>
+            <div>
+              <h4 className="font-semibold text-sm mb-3">Links</h4>
+              <div className="flex flex-col gap-2 text-sm">
+                <a href="https://github.com/srinivasajan/CodeBolt" target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+                  GitHub
+                </a>
+                <a href="https://nvidia.com/nim" target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+                  NVIDIA NIM
+                </a>
+                <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Supabase
+                </a>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">
-              © 2026 CODEBOLT. Built with React, TypeScript, Vite, and NVIDIA NIM.
+            <div>
+              <h4 className="font-semibold text-sm mb-3">Made By</h4>
+              <div className="flex flex-col gap-2 text-sm">
+                <p className="text-muted-foreground">Srinivas Jangiti</p>
+                <a href="tel:+918767505121" className="text-muted-foreground hover:text-foreground transition-colors">
+                  +91 8767505121
+                </a>
+                <a href="mailto:srinivasajan.work@gmail.com" className="text-muted-foreground hover:text-foreground transition-colors">
+                  srinivasajan.work@gmail.com
+                </a>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-semibold text-sm mb-3">Connect</h4>
+              <div className="flex flex-col gap-2 text-sm">
+                <a href="https://x.com/srinivasajan" target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Twitter / X
+                </a>
+                <a href="https://www.linkedin.com/in/srinivasajan/" target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+                  LinkedIn
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-border/10 pt-8">
+            <p className="text-xs text-muted-foreground text-center">
+              © 2026 CODEBOLT. Built with React, TypeScript, Vite, and NVIDIA NIM. All rights reserved.
             </p>
           </div>
         </div>
