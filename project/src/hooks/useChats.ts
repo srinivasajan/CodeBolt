@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@clerk/clerk-react'
+import { toast } from 'sonner'
 import type { Chat } from '@/types'
 import { NVIDIA_MODELS } from '@/types'
 
@@ -19,7 +20,6 @@ export function useChats() {
     const { data, error } = await supabase
       .from('chats')
       .select('*')
-      .eq('user_id', userId)
       .order('updated_at', { ascending: false })
 
     if (!error && data) setChats(data as Chat[])
@@ -31,16 +31,23 @@ export function useChats() {
   }, [fetchChats])
 
   const createChat = useCallback(async (model?: string): Promise<Chat | null> => {
-    if (!userId) return null
+    if (!userId) {
+      toast.error('User not authenticated')
+      return null
+    }
     
     const selectedModel = model ?? NVIDIA_MODELS[0].id
     const { data, error } = await supabase
       .from('chats')
-      .insert({ title: 'New Chat', model: selectedModel, user_id: userId })
+      .insert({ title: 'New Chat', model: selectedModel })
       .select()
       .single()
 
-    if (error || !data) return null
+    if (error || !data) {
+      console.error("Supabase insert error:", error)
+      toast.error(`Database error: ${error?.message || 'Unknown error'}`)
+      return null
+    }
     const chat = data as Chat
     setChats((prev) => [chat, ...prev])
     return chat

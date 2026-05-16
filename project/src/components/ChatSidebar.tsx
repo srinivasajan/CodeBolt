@@ -67,8 +67,7 @@ export function ChatSidebar({
       try {
         const { data } = await supabase
           .from('messages')
-          .select('chat_id, chats!inner(user_id)')
-          .eq('chats.user_id', userId)
+          .select('chat_id')
           .ilike('content', `%${searchQuery}%`)
           .limit(100)
           
