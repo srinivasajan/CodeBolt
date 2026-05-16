@@ -1,7 +1,7 @@
 import type { Message, ChatSettings } from '@/types'
 
 // Use local proxy endpoint instead of direct API calls
-const PROXY_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '/api'
+const PROXY_BASE = import.meta.env.DEV ? 'http://localhost:3001' : ''
 const FALLBACK_MODEL = 'mistralai/mistral-small-4-119b-2603'
 
 export interface NvidiaMessage {
