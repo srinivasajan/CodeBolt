@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Send, Square, Paperclip, X, FileText } from 'lucide-react'
+import { Send, Square, Paperclip, X, FileText, Mic } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import JSZip from 'jszip'
+import { toast } from 'sonner'
 
 interface AttachedFile {
   name: string
@@ -23,8 +24,11 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
   const [value, setValue] = useState('')
   const [images, setImages] = useState<string[]>([])
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([])
+  const [isListening, setIsListening] = useState(false)
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const recognition = useRef<any>(null)
 
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current
@@ -36,6 +40,54 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
   useEffect(() => {
     adjustHeight()
   }, [value, adjustHeight])
+
+  // Setup Speech Recognition
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (SpeechRecognition) {
+        recognition.current = new SpeechRecognition()
+        recognition.current.continuous = false
+        recognition.current.interimResults = false
+
+        recognition.current.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript
+          setValue(prev => prev ? prev + ' ' + transcript : transcript)
+        }
+        
+        recognition.current.onerror = (event: any) => {
+          console.error('Speech recognition error', event.error)
+          setIsListening(false)
+          if (event.error === 'not-allowed') {
+            toast.error('Microphone access denied. Please allow it in your browser settings.')
+          }
+        }
+        
+        recognition.current.onend = () => {
+          setIsListening(false)
+        }
+      }
+    }
+  }, [])
+
+  const toggleListening = () => {
+    if (!recognition.current) {
+      toast.error("Your browser doesn't support speech recognition.")
+      return
+    }
+
+    if (isListening) {
+      recognition.current.stop()
+      setIsListening(false)
+    } else {
+      try {
+        recognition.current.start()
+        setIsListening(true)
+      } catch (err) {
+        console.error("Speech recognition failed to start", err)
+      }
+    }
+  }
 
   const handleSend = useCallback(() => {
     const trimmed = value.trim()
@@ -188,21 +240,39 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
             onChange={handleFileChange} 
           />
 
-          {/* File attachment */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                disabled={disabled || isStreaming}
-                className="m-1.5 size-7 shrink-0 text-muted-foreground"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Paperclip className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Attach files (Images, Text, ZIP)</TooltipContent>
-          </Tooltip>
+          <div className="flex m-1.5 gap-1 shrink-0">
+            {/* File attachment */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={disabled || isStreaming}
+                  className="size-7 text-muted-foreground"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Paperclip className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Attach files (Images, Text, ZIP)</TooltipContent>
+            </Tooltip>
+
+            {/* Mic Dictation */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={disabled || isStreaming}
+                  className={cn("size-7 text-muted-foreground transition-colors", isListening && "text-red-500 hover:text-red-600 bg-red-500/10")}
+                  onClick={toggleListening}
+                >
+                  <Mic className={cn("size-4", isListening && "animate-pulse")} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isListening ? "Stop listening" : "Dictate with Voice"}</TooltipContent>
+            </Tooltip>
+          </div>
 
           {/* Textarea */}
           <textarea
@@ -212,12 +282,13 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
               setValue(e.target.value)
             }}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder ?? 'Message CODEBOLT... (Shift+Enter for newline)'}
+            placeholder={isListening ? 'Listening...' : (placeholder ?? 'Message CODEBOLT... (Shift+Enter for newline)')}
             disabled={disabled}
             rows={1}
             className={cn(
               'flex-1 resize-none bg-transparent py-2.5 text-sm outline-none placeholder:text-muted-foreground/60',
-              'max-h-[200px] min-h-[40px]'
+              'max-h-[200px] min-h-[40px]',
+              isListening && 'placeholder:text-red-500/60'
             )}
           />
 

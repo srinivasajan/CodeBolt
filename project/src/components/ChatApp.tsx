@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Plus, Zap, LogOut } from 'lucide-react'
+import { Plus, Zap, LogOut, DownloadCloud } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { TooltipProvider } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 import { ChatSidebar } from '@/components/ChatSidebar'
 import { ChatArea } from '@/components/ChatArea'
 import { ChatInput } from '@/components/ChatInput'
@@ -13,6 +13,7 @@ import { SettingsPanel } from '@/components/SettingsPanel'
 import { CodePreviewPanel } from '@/components/CodePreviewPanel'
 import { useChats } from '@/hooks/useChats'
 import { useMessages } from '@/hooks/useMessages'
+import { cn } from '@/lib/utils'
 import type { Chat } from '@/types'
 import { NVIDIA_MODELS } from '@/types'
 
@@ -115,6 +116,53 @@ export default function ChatApp() {
     navigate('/')
   }
 
+  const handleExportChat = useCallback(() => {
+    if (!messages || messages.length === 0) {
+      toast.error('No messages to export')
+      return
+    }
+
+    const title = activeChat?.title || 'Chat Export'
+    let mdContent = `# ${title}\n\n`
+    mdContent += `*Exported on ${new Date().toLocaleString()}*\n\n---\n\n`
+
+    messages.forEach((m) => {
+      const roleName = m.role === 'user' ? '🧑‍💻 User' : '🤖 CodeBolt'
+      let contentStr = ''
+      
+      try {
+        if (m.content.trim().startsWith('[') && m.content.trim().endsWith(']')) {
+          const parsed = JSON.parse(m.content)
+          if (Array.isArray(parsed)) {
+            contentStr = parsed.map((item: any) => {
+              if (item.type === 'text') return item.text
+              if (item.type === 'image_url') return `*[Attached Image]*`
+              return ''
+            }).join('\n')
+          } else {
+            contentStr = m.content
+          }
+        } else {
+          contentStr = m.content
+        }
+      } catch {
+        contentStr = m.content
+      }
+
+      mdContent += `### ${roleName}\n\n${contentStr}\n\n---\n\n`
+    })
+
+    const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${title.toLowerCase().replace(/\s+/g, '-')}-export.md`
+    a.click()
+    URL.revokeObjectURL(url)
+    
+    toast.success('Chat exported successfully')
+  }, [messages, activeChat])
+
   // Auto-select first chat
   useEffect(() => {
     if (!chatsLoading && chats.length > 0 && !activeChatId) {
@@ -169,6 +217,20 @@ export default function ChatApp() {
               </div>
 
               <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={handleExportChat}
+                      disabled={!activeChatId || messages.length === 0}
+                      className="size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+                    >
+                      <DownloadCloud className="size-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Export Chat as Markdown</TooltipContent>
+                </Tooltip>
                 <SettingsPanel
                   settings={settings}
                   onChange={setSettings}
