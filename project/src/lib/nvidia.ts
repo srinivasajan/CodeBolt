@@ -1,6 +1,8 @@
 import type { Message, ChatSettings } from '@/types'
 
-const NVIDIA_API_BASE = 'https://integrate.api.nvidia.com/v1'
+// Use local proxy endpoint instead of direct API calls
+const PROXY_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '/api'
+const FALLBACK_MODEL = 'mistralai/mistral-small-4-119b-2603'
 
 export interface NvidiaMessage {
   role: string
@@ -16,13 +18,6 @@ export async function streamChat(
   onDone?: () => void,
   onError?: (error: Error) => void
 ): Promise<void> {
-  const apiKey = import.meta.env.VITE_NVIDIA_API_KEY as string
-
-  if (!apiKey) {
-    onError?.(new Error('NVIDIA API key not configured. Add VITE_NVIDIA_API_KEY to your .env file.'))
-    return
-  }
-
   const systemMessage: NvidiaMessage = {
     role: 'system',
     content: settings.systemPrompt,
@@ -31,26 +26,38 @@ export async function streamChat(
   const allMessages = [systemMessage, ...messages]
 
   try {
-    const response = await fetch(`${NVIDIA_API_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      signal,
-      body: JSON.stringify({
-        model,
-        messages: allMessages,
-        temperature: settings.temperature,
-        max_tokens: settings.maxTokens,
-        stream: true,
-      }),
-    })
+    const sendRequest = async (requestedModel: string) => {
+      const response = await fetch(`${PROXY_BASE}/api/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal,
+        body: JSON.stringify({
+          model: requestedModel,
+          messages: allMessages,
+          temperature: settings.temperature,
+          max_tokens: settings.maxTokens,
+          stream: true,
+        }),
+      })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`NVIDIA API error ${response.status}: ${errorText}`)
+      if (!response.ok) {
+        const errorText = await response.text()
+        const notFoundForAccount =
+          response.status === 404 && errorText.toLowerCase().includes('not found for account')
+
+        if (notFoundForAccount && requestedModel !== FALLBACK_MODEL) {
+          return sendRequest(FALLBACK_MODEL)
+        }
+
+        throw new Error(`NVIDIA API error ${response.status}: ${errorText}`)
+      }
+
+      return response
     }
+
+    const response = await sendRequest(model)
 
     const reader = response.body?.getReader()
     if (!reader) throw new Error('No response body')
