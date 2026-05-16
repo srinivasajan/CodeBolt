@@ -93,7 +93,10 @@ export async function streamChat(
 
     onDone?.()
   } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') return
+    if (err instanceof Error && err.name === 'AbortError') {
+      onDone?.()
+      return
+    }
     onError?.(err instanceof Error ? err : new Error(String(err)))
   }
 }

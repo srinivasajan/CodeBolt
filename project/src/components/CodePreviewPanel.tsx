@@ -83,25 +83,31 @@ function DownloadButton() {
 }
 
 export function CodePreviewPanel({ code, onClose }: CodePreviewPanelProps) {
+  const isHtml = code.trim().toLowerCase().startsWith('<!doctype html') || code.includes('<html')
+  
+  const template = isHtml ? 'vanilla' : 'react-ts'
+  const mainFile = isHtml ? '/index.html' : '/App.tsx'
+  const dependencies = isHtml ? {} : {
+    "lucide-react": "latest",
+    "framer-motion": "latest",
+    "tailwind-merge": "latest",
+    "clsx": "latest",
+  }
+
   return (
     <div className="flex h-full w-full flex-col border-l border-border bg-background">
       <SandpackProvider
-        template="react-ts"
+        template={template}
         theme="dark"
         files={{
-          "/App.tsx": code,
+          [mainFile]: code,
         }}
         customSetup={{
-          dependencies: {
-            "lucide-react": "latest",
-            "framer-motion": "latest",
-            "tailwind-merge": "latest",
-            "clsx": "latest",
-          }
+          dependencies
         }}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-2 bg-card">
-          <h3 className="text-sm font-medium">Live Preview</h3>
+          <h3 className="text-sm font-medium">Live Preview {isHtml ? '(Vanilla)' : '(React)'}</h3>
           <div className="flex items-center">
             <DownloadButton />
             <Button variant="ghost" size="icon-sm" onClick={onClose} className="size-6" title="Close Preview">
