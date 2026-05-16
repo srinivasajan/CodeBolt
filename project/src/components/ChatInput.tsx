@@ -1,8 +1,15 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Send, Square, Paperclip, X } from 'lucide-react'
+import { Send, Square, Paperclip, X, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import JSZip from 'jszip'
+
+interface AttachedFile {
+  name: string
+  content: string
+  size: number
+}
 
 interface ChatInputProps {
   onSend: (content: string, images?: string[]) => void
@@ -15,6 +22,7 @@ interface ChatInputProps {
 export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }: ChatInputProps) {
   const [value, setValue] = useState('')
   const [images, setImages] = useState<string[]>([])
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -31,14 +39,22 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
 
   const handleSend = useCallback(() => {
     const trimmed = value.trim()
-    if ((!trimmed && images.length === 0) || isStreaming || disabled) return
-    onSend(trimmed, images.length > 0 ? images : undefined)
+    if ((!trimmed && images.length === 0 && attachedFiles.length === 0) || isStreaming || disabled) return
+
+    let combinedContent = trimmed
+    if (attachedFiles.length > 0) {
+      const fileTexts = attachedFiles.map(f => `--- File: ${f.name} ---\n${f.content}`).join('\n\n')
+      combinedContent = trimmed ? `${trimmed}\n\n${fileTexts}` : fileTexts
+    }
+
+    onSend(combinedContent, images.length > 0 ? images : undefined)
     setValue('')
     setImages([])
+    setAttachedFiles([])
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
-  }, [value, images, isStreaming, disabled, onSend])
+  }, [value, images, attachedFiles, isStreaming, disabled, onSend])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -50,20 +66,64 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
     [handleSend]
   )
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
 
-    files.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        if (typeof e.target?.result === 'string') {
-          setImages(prev => [...prev, e.target!.result as string])
+    for (const file of files) {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          if (typeof e.target?.result === 'string') {
+            setImages(prev => [...prev, e.target!.result as string])
+          }
         }
+        reader.readAsDataURL(file)
+      } else if (file.name.endsWith('.zip')) {
+        const reader = new FileReader()
+        reader.onload = async (e) => {
+          if (e.target?.result instanceof ArrayBuffer) {
+            try {
+              const zip = new JSZip()
+              const zipContent = await zip.loadAsync(e.target.result)
+              const extractedFiles: AttachedFile[] = []
+
+              for (const [filename, zipEntry] of Object.entries(zipContent.files)) {
+                if (zipEntry.dir) continue
+                // Skip binary files and common ignores
+                if (filename.includes('node_modules/') || filename.includes('.git/') || filename.match(/\.(png|jpg|jpeg|gif|ico|pdf|zip|tar|gz|mp4|webm|mp3|wav|ogg|wasm|exe)$/i)) {
+                  continue
+                }
+                const textContent = await zipEntry.async('string')
+                extractedFiles.push({
+                  name: filename,
+                  content: textContent,
+                  size: textContent.length
+                })
+              }
+              setAttachedFiles(prev => [...prev, ...extractedFiles])
+            } catch (err) {
+              console.error('Failed to parse ZIP', err)
+            }
+          }
+        }
+        reader.readAsArrayBuffer(file)
+      } else {
+        // Assume text file
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          if (typeof e.target?.result === 'string') {
+            setAttachedFiles(prev => [...prev, {
+              name: file.name,
+              content: e.target!.result as string,
+              size: file.size
+            }])
+          }
+        }
+        reader.readAsText(file)
       }
-      reader.readAsDataURL(file)
-    })
-    
+    }
+
     // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
@@ -74,17 +134,35 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
     setImages(prev => prev.filter((_, idx) => idx !== indexToRemove))
   }
 
+  const removeAttachedFile = (indexToRemove: number) => {
+    setAttachedFiles(prev => prev.filter((_, idx) => idx !== indexToRemove))
+  }
+
   return (
     <div className="border-t border-border bg-background/80 px-4 py-3 backdrop-blur-sm">
       <div className="mx-auto max-w-3xl">
-        {images.length > 0 && (
+        {(images.length > 0 || attachedFiles.length > 0) && (
           <div className="mb-3 flex flex-wrap gap-2">
             {images.map((img, idx) => (
-              <div key={idx} className="relative group rounded-md border border-border overflow-hidden size-16 bg-muted/50">
+              <div key={`img-${idx}`} className="relative group rounded-md border border-border overflow-hidden size-16 bg-muted/50">
                 <img src={img} alt="Attachment" className="object-cover w-full h-full" />
                 <button
                   onClick={() => removeImage(idx)}
                   className="absolute top-1 right-1 p-0.5 rounded-full bg-background/80 text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ))}
+            
+            {attachedFiles.map((f, idx) => (
+              <div key={`file-${idx}`} className="flex items-center gap-1.5 rounded-md border border-border bg-card shadow-sm px-2.5 py-1.5 text-xs group">
+                <FileText className="size-3.5 text-muted-foreground" />
+                <span className="max-w-[150px] truncate font-medium text-foreground/80">{f.name}</span>
+                <span className="text-[10px] text-muted-foreground">({Math.round(f.size / 1024)}kb)</span>
+                <button
+                  onClick={() => removeAttachedFile(idx)}
+                  className="ml-1 rounded-full p-0.5 opacity-0 group-hover:opacity-100 hover:bg-muted text-muted-foreground transition-all"
                 >
                   <X className="size-3" />
                 </button>
@@ -103,7 +181,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
           {/* Hidden File Input */}
           <input 
             type="file" 
-            accept="image/*" 
+            accept="image/*,.zip,text/*,.js,.ts,.jsx,.tsx,.py,.json,.md,.html,.css,.csv" 
             multiple 
             ref={fileInputRef} 
             className="hidden" 
@@ -123,7 +201,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
                 <Paperclip className="size-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Attach image</TooltipContent>
+            <TooltipContent>Attach files (Images, Text, ZIP)</TooltipContent>
           </Tooltip>
 
           {/* Textarea */}
@@ -165,8 +243,8 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
                   <Button
                     size="icon-sm"
                     onClick={handleSend}
-                    disabled={(!value.trim() && images.length === 0) || disabled}
-                    className={cn('size-7', (!value.trim() && images.length === 0) && 'opacity-40')}
+                    disabled={(!value.trim() && images.length === 0 && attachedFiles.length === 0) || disabled}
+                    className={cn('size-7', (!value.trim() && images.length === 0 && attachedFiles.length === 0) && 'opacity-40')}
                   >
                     <Send className="size-3.5" />
                   </Button>
