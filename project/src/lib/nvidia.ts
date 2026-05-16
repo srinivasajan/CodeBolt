@@ -27,10 +27,13 @@ export async function streamChat(
 
   try {
     const sendRequest = async (requestedModel: string) => {
+      const apiKey = localStorage.getItem('VITE_NVIDIA_API_KEY') || import.meta.env.VITE_NVIDIA_API_KEY;
+      
       const response = await fetch(`${PROXY_BASE}/api/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(apiKey && { 'x-nvidia-api-key': apiKey }),
         },
         signal,
         body: JSON.stringify({

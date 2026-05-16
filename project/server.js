@@ -12,20 +12,28 @@ app.use(express.json());
 
 // Proxy endpoint for NVIDIA API
 app.post('/api/chat/completions', async (req, res) => {
-  const apiKey = process.env.VITE_NVIDIA_API_KEY;
+  // Try to get API key from environment first, then from request header, then from localStorage (passed by client)
+  let apiKey = process.env.VITE_NVIDIA_API_KEY;
+  
+  if (!apiKey && req.headers['x-nvidia-api-key']) {
+    apiKey = req.headers['x-nvidia-api-key'];
+  }
 
   if (!apiKey) {
-    return res.status(400).json({ error: 'NVIDIA API key not configured' });
+    return res.status(400).json({ error: 'NVIDIA API key not configured. Please provide your API key.' });
   }
 
   try {
+    const { apiKey: clientApiKey, ...bodyWithoutKey } = req.body;
+    const requestBody = clientApiKey && !process.env.VITE_NVIDIA_API_KEY ? bodyWithoutKey : req.body;
+    
     const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {

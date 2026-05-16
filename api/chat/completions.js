@@ -6,9 +6,9 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const apiKey = process.env.VITE_NVIDIA_API_KEY
+  const apiKey = req.headers['x-nvidia-api-key'] || process.env.VITE_NVIDIA_API_KEY
   if (!apiKey) {
-    return res.status(400).json({ error: 'NVIDIA API key not configured' })
+    return res.status(400).json({ error: 'NVIDIA API key not configured. Please provide your API key.' })
   }
 
   try {
