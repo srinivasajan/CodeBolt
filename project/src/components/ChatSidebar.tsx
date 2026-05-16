@@ -1,22 +1,23 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Plus,
-  MessageSquare,
-  Trash2,
-  Pencil,
-  Check,
-  X,
-  ChevronRight,
-  Zap,
+  Plus, MessageSquare, Trash2, Pencil, Check, X, ChevronRight, Zap,
+  Search, Folder, FolderPlus, MoreVertical, Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { Chat } from '@/types'
+import { useFolders } from '@/hooks/useFolders'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@clerk/clerk-react'
 
 interface ChatSidebarProps {
   chats: Chat[]
@@ -27,28 +28,6 @@ interface ChatSidebarProps {
   onRename: (id: string, title: string) => void
   collapsed: boolean
   onToggleCollapse: () => void
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  const days = Math.floor(diff / 86400000)
-
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  if (days < 7) return `${days}d ago`
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function groupChats(chats: Chat[]): Record<string, Chat[]> {
-  const groups: Record<string, Chat[]> = {}
-  for (const chat of chats) {
-    const label = formatDate(chat.updated_at)
-    if (!groups[label]) groups[label] = []
-    groups[label].push(chat)
-  }
-  return groups
 }
 
 export function ChatSidebar({
@@ -64,6 +43,46 @@ export function ChatSidebar({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+
+  // Folder & Search State
+  const { folders, chatAssignments, createFolder, assignChat, deleteFolder } = useFolders()
+  const { userId } = useAuth()
+  
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchResults, setSearchResults] = useState<string[]>([])
+  
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([])
+      setIsSearching(false)
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        const { data } = await supabase
+          .from('messages')
+          .select('chat_id, chats!inner(user_id)')
+          .eq('chats.user_id', userId)
+          .ilike('content', `%${searchQuery}%`)
+          .limit(100)
+          
+        const matches = Array.from(new Set(data?.map(d => d.chat_id) || []))
+        setSearchResults(matches as string[])
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setIsSearching(false)
+      }
+    }, 500)
+    
+    return () => clearTimeout(timer)
+  }, [searchQuery, userId])
 
   const startEdit = useCallback((chat: Chat) => {
     setEditingId(chat.id)
@@ -82,7 +101,37 @@ export function ChatSidebar({
     setEditValue('')
   }, [])
 
-  const grouped = groupChats(chats)
+  const handleCreateFolder = () => {
+    if (newFolderName.trim()) {
+      createFolder(newFolderName)
+      setNewFolderName('')
+      setIsCreatingFolder(false)
+    }
+  }
+
+  const filteredChats = chats.filter(chat => {
+    if (!searchQuery.trim()) return true;
+    const matchesTitle = chat.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesMessage = searchResults.includes(chat.id);
+    return matchesTitle || matchesMessage;
+  });
+
+  const groupedByFolder: Record<string, Chat[]> = { 'Uncategorized': [] }
+  folders.forEach(f => groupedByFolder[f] = [])
+  
+  filteredChats.forEach(chat => {
+    const f = chatAssignments[chat.id]
+    if (f && folders.includes(f)) {
+      groupedByFolder[f].push(chat)
+    } else {
+      groupedByFolder['Uncategorized'].push(chat)
+    }
+  })
+
+  // Folders to render (omit empty folders if searching)
+  const foldersToRender = ['Uncategorized', ...folders].filter(
+    f => groupedByFolder[f].length > 0 || (!searchQuery && f !== 'Uncategorized')
+  )
 
   if (collapsed) {
     return (
@@ -183,7 +232,46 @@ export function ChatSidebar({
         </div>
       </div>
 
+      {/* Search Bar */}
+      <div className="px-3 pb-3">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+          <Input
+            placeholder="Search chats..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-9 bg-sidebar-accent/50 border-none focus-visible:ring-1 focus-visible:ring-primary/50 text-sm"
+          />
+          {isSearching && (
+            <Loader2 className="absolute right-2.5 top-2.5 size-4 animate-spin text-muted-foreground" />
+          )}
+        </div>
+      </div>
+
       <Separator className="bg-sidebar-border" />
+
+      {/* Create Folder UI */}
+      {isCreatingFolder && (
+        <div className="px-3 py-2 flex items-center gap-1 bg-sidebar-accent/30">
+          <Input
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            placeholder="Folder name..."
+            className="h-7 text-xs bg-sidebar"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleCreateFolder()
+              if (e.key === 'Escape') setIsCreatingFolder(false)
+            }}
+          />
+          <Button variant="ghost" size="icon-xs" onClick={handleCreateFolder} className="size-6 shrink-0">
+            <Check className="size-3" />
+          </Button>
+          <Button variant="ghost" size="icon-xs" onClick={() => setIsCreatingFolder(false)} className="size-6 shrink-0">
+            <X className="size-3" />
+          </Button>
+        </div>
+      )}
 
       {/* Chat List */}
       <ScrollArea className="flex-1 px-2 py-2">
@@ -196,16 +284,41 @@ export function ChatSidebar({
               New Chat
             </Button>
           </div>
+        ) : filteredChats.length === 0 && searchQuery ? (
+          <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+            <p className="text-xs text-sidebar-foreground/50">No results found.</p>
+          </div>
         ) : (
-          Object.entries(grouped).map(([label, groupChats]) => (
-            <div key={label} className="mb-3">
-              <p className="mb-1 px-2 text-[10px] font-medium uppercase tracking-wider text-sidebar-foreground/40">
-                {label}
-              </p>
-              {groupChats.map((chat) => (
+          foldersToRender.map((folderName) => (
+            <div key={folderName} className="mb-4">
+              <div className="flex items-center justify-between px-2 mb-1 group">
+                <div className="flex items-center gap-1.5 text-sidebar-foreground/60">
+                  {folderName === 'Uncategorized' ? (
+                    <MessageSquare className="size-3" />
+                  ) : (
+                    <Folder className="size-3" />
+                  )}
+                  <p className="text-[10px] font-medium uppercase tracking-wider">
+                    {folderName}
+                  </p>
+                </div>
+                {folderName !== 'Uncategorized' && (
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => deleteFolder(folderName)}
+                    className="size-5 opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
+                    title="Delete folder (keeps chats)"
+                  >
+                    <X className="size-3" />
+                  </Button>
+                )}
+              </div>
+              
+              {groupedByFolder[folderName].map((chat) => (
                 <div
                   key={chat.id}
-                  className="relative"
+                  className="relative group/chat"
                   onMouseEnter={() => setHoveredId(chat.id)}
                   onMouseLeave={() => setHoveredId(null)}
                 >
@@ -221,52 +334,68 @@ export function ChatSidebar({
                         className="h-6 flex-1 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
                         autoFocus
                       />
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={commitEdit}
-                        className="size-5 text-sidebar-foreground/60"
-                      >
+                      <Button variant="ghost" size="icon-xs" onClick={commitEdit} className="size-5 text-sidebar-foreground/60">
                         <Check className="size-3" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={cancelEdit}
-                        className="size-5 text-sidebar-foreground/60"
-                      >
+                      <Button variant="ghost" size="icon-xs" onClick={cancelEdit} className="size-5 text-sidebar-foreground/60">
                         <X className="size-3" />
                       </Button>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => onSelect(chat)}
+                    <div
                       className={cn(
-                        'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors',
+                        'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors cursor-pointer',
                         activeChatId === chat.id
                           ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                           : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
                       )}
+                      onClick={() => onSelect(chat)}
                     >
-                      <MessageSquare className="size-3.5 shrink-0 text-sidebar-foreground/40" />
                       <span className="flex-1 truncate text-xs">{chat.title}</span>
+                      
                       {hoveredId === chat.id && (
                         <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={() => startEdit(chat)}
-                            className="rounded p-0.5 text-sidebar-foreground/40 hover:text-sidebar-foreground"
-                          >
+                          <button onClick={() => startEdit(chat)} className="rounded p-0.5 text-sidebar-foreground/40 hover:text-sidebar-foreground">
                             <Pencil className="size-3" />
                           </button>
-                          <button
-                            onClick={() => onDelete(chat.id)}
-                            className="rounded p-0.5 text-sidebar-foreground/40 hover:text-destructive"
-                          >
-                            <Trash2 className="size-3" />
-                          </button>
+                          
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="rounded p-0.5 text-sidebar-foreground/40 hover:text-sidebar-foreground">
+                                <MoreVertical className="size-3" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger className="text-xs">
+                                  <FolderPlus className="mr-2 size-3" /> Move to Folder
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuPortal>
+                                  <DropdownMenuSubContent className="w-36">
+                                    <DropdownMenuItem className="text-xs" onClick={() => assignChat(chat.id, null)}>
+                                      Uncategorized
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    {folders.map(f => (
+                                      <DropdownMenuItem key={f} className="text-xs" onClick={() => assignChat(chat.id, f)}>
+                                        {f}
+                                      </DropdownMenuItem>
+                                    ))}
+                                    {folders.length === 0 && (
+                                      <div className="px-2 py-1 text-[10px] text-muted-foreground">No folders yet</div>
+                                    )}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                              </DropdownMenuSub>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-xs text-destructive focus:text-destructive" onClick={() => onDelete(chat.id)}>
+                                <Trash2 className="mr-2 size-3" /> Delete Chat
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       )}
-                    </button>
+                    </div>
                   )}
                 </div>
               ))}
@@ -276,10 +405,18 @@ export function ChatSidebar({
       </ScrollArea>
 
       {/* Footer */}
-      <div className="border-t border-sidebar-border px-3 py-2">
+      <div className="border-t border-sidebar-border px-3 py-2 flex items-center justify-between">
         <p className="text-[10px] text-sidebar-foreground/30">
           {chats.length} chat{chats.length !== 1 ? 's' : ''}
         </p>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon-xs" onClick={() => setIsCreatingFolder(true)} className="size-5 text-sidebar-foreground/50 hover:text-sidebar-foreground">
+              <FolderPlus className="size-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Create Folder</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   )
