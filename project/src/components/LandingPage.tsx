@@ -1,15 +1,29 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton, useAuth } from '@clerk/clerk-react'
 import { Zap, ArrowRight, Code2, Database, Palette, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 export default function LandingPage() {
+  const { isSignedIn } = useAuth()
   const navigate = useNavigate()
   const [apiKey, setApiKey] = useState('')
   const [showApiInput, setShowApiInput] = useState(false)
+  const [showSignInHint, setShowSignInHint] = useState(false)
 
   const handleStartBuild = () => {
+    if (!isSignedIn) {
+      setShowSignInHint(true)
+      return
+    }
+    
+    const savedKey = localStorage.getItem('VITE_NVIDIA_API_KEY')
+    if (savedKey) {
+      navigate('/app')
+      return
+    }
+
     if (apiKey.trim()) {
       // Save API key to localStorage
       localStorage.setItem('VITE_NVIDIA_API_KEY', apiKey)
@@ -20,6 +34,11 @@ export default function LandingPage() {
   }
 
   const handleLaunchApp = () => {
+    if (!isSignedIn) {
+      setShowSignInHint(true)
+      return
+    }
+
     const savedKey = localStorage.getItem('VITE_NVIDIA_API_KEY')
     if (savedKey) {
       navigate('/app')
@@ -62,6 +81,17 @@ export default function LandingPage() {
             <a href="https://github.com/srinivasajan/CodeBolt" target="_blank" rel="noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               GitHub
             </a>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <Button variant="outline" className="gap-2">Sign In</Button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <Button className="gap-2">Sign Up</Button>
+              </SignUpButton>
+            </SignedOut>
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
             <Button onClick={handleLaunchApp} className="gap-2">
               Launch App <ArrowRight className="h-4 w-4" />
             </Button>
@@ -79,6 +109,10 @@ export default function LandingPage() {
             <p className="mt-6 text-lg text-muted-foreground sm:text-xl">
               CODEBOLT is your clean interface for NVIDIA NIM. Bring your own NVIDIA API key, pick a model, and start building with real-time streaming responses.
             </p>
+
+            {showSignInHint && (
+              <p className="mt-4 text-sm text-primary">Sign in first, then add your NVIDIA API key to continue.</p>
+            )}
 
             {/* API Key Input Section */}
             {showApiInput ? (
