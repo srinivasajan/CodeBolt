@@ -87,7 +87,7 @@ export function CodePreviewPanel({ code, onClose }: CodePreviewPanelProps) {
   
   const template = isHtml ? 'vanilla' : 'react-ts'
   const mainFile = isHtml ? '/index.html' : '/App.tsx'
-  const dependencies = isHtml ? {} : {
+  const dependencies: Record<string, string> = isHtml ? {} : {
     "lucide-react": "latest",
     "framer-motion": "latest",
     "tailwind-merge": "latest",
