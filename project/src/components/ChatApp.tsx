@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Plus, Zap, LogOut, DownloadCloud } from 'lucide-react'
+import { Plus, Zap, LogOut, DownloadCloud, LayoutTemplate, Code2 } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,7 @@ export default function ChatApp() {
   const navigate = useNavigate()
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [isIdeMode, setIsIdeMode] = useState(false)
   const [previewCode, setPreviewCode] = useState<string | null>(null)
 
   const {
@@ -228,107 +229,167 @@ export default function ChatApp() {
         />
 
         {/* Main area */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Chat Column */}
-          <div className={cn("flex flex-col h-full transition-all duration-300 border-l border-border/60 bg-background/80 backdrop-blur-xl", previewCode ? "w-1/2" : "w-full")}>
-            {/* Topbar */}
-            <div className="flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl shrink-0">
-              <div className="flex items-center gap-3">
-                {sidebarCollapsed && (
-                  <Link to="/" className="mr-1 flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-2.5 py-1.5 shadow-sm hover:bg-card/90 transition-colors">
-                    <div className="flex size-6 items-center justify-center rounded-full bg-primary shadow-sm shadow-primary/20">
-                      <Zap className="size-3.5 text-primary-foreground" />
-                    </div>
-                    <span className="text-xs font-semibold tracking-[0.24em] text-muted-foreground">CODEBOLT</span>
-                  </Link>
-                )}
-                <ModelSelector
-                  value={activeModel}
-                  onChange={handleModelChange}
-                  disabled={!activeChatId || isStreaming}
-                />
-                {isStreaming && (
-                  <div className="flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-2.5 py-1.5 text-xs shadow-sm">
-                    <span className="relative flex size-2">
-                      <span className="absolute inline-flex size-full rounded-full bg-emerald-400 opacity-70 animate-ping" />
-                      <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-                    </span>
-                    <span className="text-muted-foreground">Generating…</span>
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {/* Topbar (Shared) */}
+          <div className="flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl shrink-0 z-10">
+            <div className="flex items-center gap-3">
+              {sidebarCollapsed && (
+                <Link to="/" className="mr-1 flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-2.5 py-1.5 shadow-sm hover:bg-card/90 transition-colors">
+                  <div className="flex size-6 items-center justify-center rounded-full bg-primary shadow-sm shadow-primary/20">
+                    <Zap className="size-3.5 text-primary-foreground" />
                   </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={handleExportChat}
-                      disabled={!activeChatId || messages.length === 0}
-                      className="size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
-                    >
-                      <DownloadCloud className="size-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Export Chat as Markdown</TooltipContent>
-                </Tooltip>
-                <SettingsPanel
-                  settings={settings}
-                  onChange={setSettings}
-                  disabled={isStreaming}
-                />
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={handleNewChat}
-                  className="size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
-                >
-                  <Plus className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={handleLogout}
-                  className="size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
-                  title="Logout"
-                >
-                  <LogOut className="size-4" />
-                </Button>
-              </div>
+                  <span className="text-xs font-semibold tracking-[0.24em] text-muted-foreground">CODEBOLT</span>
+                </Link>
+              )}
+              <ModelSelector
+                value={activeModel}
+                onChange={handleModelChange}
+                disabled={!activeChatId || isStreaming}
+              />
+              {isStreaming && (
+                <div className="flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-2.5 py-1.5 text-xs shadow-sm">
+                  <span className="relative flex size-2">
+                    <span className="absolute inline-flex size-full rounded-full bg-emerald-400 opacity-70 animate-ping" />
+                    <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+                  </span>
+                  <span className="text-muted-foreground">Generating…</span>
+                </div>
+              )}
             </div>
 
-            {/* Chat area */}
-            <ChatArea
-              messages={messages}
-              isStreaming={isStreaming}
-              streamingContent={streamingContent}
-              chatId={activeChatId}
-              onRegenerate={handleRegenerate}
-              onPreview={(code) => setPreviewCode(code)}
-              onFork={handleForkChat}
-            />
-
-            {/* Input */}
-            <ChatInput
-              onSend={handleSend}
-              onStop={stopStreaming}
-              isStreaming={isStreaming}
-              disabled={!activeChatId}
-              placeholder={
-                activeChatId
-                  ? 'Message CODEBOLT... (Shift+Enter for newline)'
-                  : 'Create a new chat to start...'
-              }
-            />
+            <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={isIdeMode ? "secondary" : "ghost"}
+                    size="icon-sm"
+                    onClick={() => setIsIdeMode(!isIdeMode)}
+                    className={cn(
+                      "size-8 rounded-full transition-colors",
+                      isIdeMode 
+                        ? "bg-primary/20 text-primary hover:bg-primary/30" 
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    )}
+                  >
+                    <LayoutTemplate className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Toggle IDE Mode</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={handleExportChat}
+                    disabled={!activeChatId || messages.length === 0}
+                    className="size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+                  >
+                    <DownloadCloud className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Export Chat as Markdown</TooltipContent>
+              </Tooltip>
+              <SettingsPanel
+                settings={settings}
+                onChange={setSettings}
+                disabled={isStreaming}
+              />
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={handleNewChat}
+                className="size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <Plus className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={handleLogout}
+                className="size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+                title="Logout"
+              >
+                <LogOut className="size-4" />
+              </Button>
+            </div>
           </div>
 
-          {/* Preview Column */}
-          {previewCode && (
-            <div className="w-1/2 h-full border-l border-border/60">
-              <CodePreviewPanel code={previewCode} onClose={() => setPreviewCode(null)} />
-            </div>
-          )}
+          {/* Content Area */}
+          <div className="flex flex-1 overflow-hidden">
+            {isIdeMode ? (
+              <>
+                {/* IDE Mode: Editor / Code Preview Area */}
+                <div className="flex-1 flex flex-col h-full relative bg-background/50 border-r border-border/60">
+                  {previewCode ? (
+                    <CodePreviewPanel code={previewCode} onClose={() => setPreviewCode(null)} />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground/30 gap-4">
+                      <Code2 className="size-24 opacity-50" />
+                      <p className="text-sm font-medium tracking-wide">NO CODE GENERATED YET</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* IDE Mode: Chat Sidebar */}
+                <div className="w-[450px] flex flex-col h-full bg-background/80 backdrop-blur-xl shrink-0">
+                  <ChatArea
+                    messages={messages}
+                    isStreaming={isStreaming}
+                    streamingContent={streamingContent}
+                    chatId={activeChatId}
+                    onRegenerate={handleRegenerate}
+                    onPreview={(code) => setPreviewCode(code)}
+                    onFork={handleForkChat}
+                  />
+                  <ChatInput
+                    onSend={handleSend}
+                    onStop={stopStreaming}
+                    isStreaming={isStreaming}
+                    disabled={!activeChatId}
+                    placeholder={
+                      activeChatId
+                        ? 'Message CODEBOLT...'
+                        : 'Create a new chat...'
+                    }
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Standard Mode: Chat Column */}
+                <div className={cn("flex flex-col h-full transition-all duration-300 border-l border-border/60 bg-background/80 backdrop-blur-xl", previewCode ? "w-1/2" : "w-full")}>
+                  <ChatArea
+                    messages={messages}
+                    isStreaming={isStreaming}
+                    streamingContent={streamingContent}
+                    chatId={activeChatId}
+                    onRegenerate={handleRegenerate}
+                    onPreview={(code) => setPreviewCode(code)}
+                    onFork={handleForkChat}
+                  />
+                  <ChatInput
+                    onSend={handleSend}
+                    onStop={stopStreaming}
+                    isStreaming={isStreaming}
+                    disabled={!activeChatId}
+                    placeholder={
+                      activeChatId
+                        ? 'Message CODEBOLT... (Shift+Enter for newline)'
+                        : 'Create a new chat to start...'
+                    }
+                  />
+                </div>
+
+                {/* Standard Mode: Preview Column */}
+                {previewCode && (
+                  <div className="w-1/2 h-full border-l border-border/60">
+                    <CodePreviewPanel code={previewCode} onClose={() => setPreviewCode(null)} />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
       <Toaster />

@@ -95,7 +95,7 @@ export function CodePreviewPanel({ code, onClose }: CodePreviewPanelProps) {
   }
 
   return (
-    <div className="flex h-full w-full flex-col border-l border-border bg-background">
+    <div className="flex h-full w-full flex-col bg-background">
       <SandpackProvider
         template={template}
         theme="dark"
