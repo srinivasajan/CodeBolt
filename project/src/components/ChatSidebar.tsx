@@ -192,59 +192,34 @@ export function ChatSidebar({
   }
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-border bg-sidebar">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-3">
-        <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-          <div className="flex size-7 items-center justify-center rounded-md bg-primary">
-            <Zap className="size-4 text-primary-foreground" />
-          </div>
-          <span className="text-sm font-bold tracking-tight text-sidebar-foreground">CODEBOLT</span>
-        </Link>
-        <div className="flex items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={onCreate}
-                className="size-7 text-sidebar-foreground/60 hover:text-sidebar-foreground"
-              >
-                <Plus className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>New chat (Ctrl+N)</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={onToggleCollapse}
-                className="size-7 text-sidebar-foreground/60 hover:text-sidebar-foreground"
-              >
-                <ChevronRight className="size-4 rotate-180" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Collapse sidebar</TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="px-3 pb-3">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+    <div className="flex h-full w-full flex-col bg-transparent">
+      {/* Search and Actions */}
+      <div className="px-3 pb-2 pt-1 flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-1.5 size-3.5 text-muted-foreground" />
           <Input
             placeholder="Search chats..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9 bg-sidebar-accent/50 border-none focus-visible:ring-1 focus-visible:ring-primary/50 text-sm"
+            className="pl-7 h-7 bg-background/50 border border-border/50 focus-visible:ring-1 focus-visible:ring-primary/50 text-xs rounded-sm"
           />
           {isSearching && (
-            <Loader2 className="absolute right-2.5 top-2.5 size-4 animate-spin text-muted-foreground" />
+            <Loader2 className="absolute right-2 top-1.5 size-3.5 animate-spin text-muted-foreground" />
           )}
         </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={onCreate}
+              className="size-7 shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground rounded-sm"
+            >
+              <Plus className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>New chat (Ctrl+N)</TooltipContent>
+        </Tooltip>
       </div>
 
       <Separator className="bg-sidebar-border" />
