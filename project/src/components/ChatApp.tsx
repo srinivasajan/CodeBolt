@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Zap, LogOut, DownloadCloud, Code2, X, LayoutTemplate, Columns2, FolderInput } from 'lucide-react'
+import { Plus, Zap, LogOut, DownloadCloud, Code2, X, LayoutTemplate, Columns2 } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -32,8 +32,8 @@ export default function ChatApp() {
   const zipInputRef = useRef<HTMLInputElement>(null)
 
   const {
-    files, fileList, fileTree, activeFile, projectName,
-    loadFiles, openFile, clearProject, setActiveFile
+    fileTree, activeFile, projectName,
+    loadFiles, clearProject, setActiveFile
   } = useProjectFiles()
 
   const {

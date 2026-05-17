@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import {
   ChevronRight, ChevronDown, FileText, Folder, FolderOpen,
-  FolderInput, Plus, RotateCcw, FolderPlus
+  FolderInput, RotateCcw, FolderPlus
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
