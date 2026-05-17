@@ -86,28 +86,25 @@ export function useProjectFiles() {
   }, [files])
 
   const updateFile = useCallback((path: string, content: string) => {
-    let resolvedKey: string | null = null
     setFiles(prev => {
-      if (prev[path]) {
-        resolvedKey = path
-        return { ...prev, [path]: { ...prev[path], content } }
+      // Resolve the correct key (exact → fuzzy → new)
+      let key = path
+      if (!prev[path]) {
+        const fuzzyKey = Object.keys(prev).find(k =>
+          k.endsWith('/' + path) || k === path || k.endsWith(path)
+        )
+        if (fuzzyKey) key = fuzzyKey
       }
-      const fuzzyKey = Object.keys(prev).find(k =>
-        k.endsWith('/' + path) || k === path || k.endsWith(path)
-      )
-      if (fuzzyKey) {
-        resolvedKey = fuzzyKey
-        return { ...prev, [fuzzyKey]: { ...prev[fuzzyKey], content } }
-      }
-      // New file
-      resolvedKey = path
-      const name = path.split('/').pop() ?? path
-      return { ...prev, [path]: { path, name, content } }
+      const name = key.split('/').pop() ?? key
+      const existing = prev[key] ?? { path: key, name, content: '' }
+      return { ...prev, [key]: { ...existing, content } }
     })
-    // Update activeFile separately — cannot call setState inside setState updater
+    // Update activeFile in a separate setState — never call setState inside setState updater
     setActiveFile(prev => {
-      if (!resolvedKey) return prev
-      return prev?.path === resolvedKey ? { ...prev, content } : prev
+      if (!prev) return prev
+      if (prev.path === path) return { ...prev, content }
+      if (prev.path.endsWith('/' + path) || prev.path.endsWith(path)) return { ...prev, content }
+      return prev
     })
   }, [])
 

@@ -158,9 +158,8 @@ export default function ChatApp() {
   // (react only on projectName change, not every fileList mutation)
   useEffect(() => {
     if (!isIdeMode || !projectName || fileList.length === 0) return
-    // Only include file paths (not contents) in system prompt — safe size
     const pathList = fileList.slice(0, 200).map(f => `  ${f.path}`).join('\n')
-    const suffix = `\n\n---\n## Active Project: ${projectName} (${fileList.length} files)\nFiles:\n${pathList}\n\nWhen asked to edit files, output changes using:\n<edit_file path="exact/file/path">\ncomplete new file content\n</edit_file>\n---`
+    const suffix = `\n\n---\n## Active Project: ${projectName} (${fileList.length} files loaded)\n\nProject files:\n${pathList}\n\n### HOW TO EDIT FILES\nWhen the user asks you to change, fix, refactor, or rewrite any file:\n1. Output the COMPLETE new content of each changed file using this exact format:\n\n<edit_file path="exact/path/from/list/above">\n[full file content — no ellipsis, no truncation]\n</edit_file>\n\n2. After the edit_file block(s), write a SHORT human-readable summary of what you changed.\n3. NEVER display or explain the <edit_file> XML syntax to the user — it is invisible infrastructure.\n4. NEVER say "I cannot edit files" — you can, by using the format above.\n5. The edit_file blocks are automatically applied to the file system — do not ask the user to copy/paste.\n---`
     setSettings(prev => {
       const base = prev.systemPrompt.split('\n\n---\n## Active Project:')[0]
       return { ...prev, systemPrompt: base + suffix }
