@@ -1,5 +1,5 @@
 import type { Message, ChatSettings } from '@/types'
-
+import { ALL_MODELS } from '@/types'
 // Use local proxy endpoint instead of direct API calls
 const PROXY_BASE = import.meta.env.DEV ? 'http://localhost:3001' : ''
 const FALLBACK_MODEL = 'mistralai/mistral-small-4-119b-2603'
@@ -27,14 +27,42 @@ export async function streamChat(
 
   try {
     const sendRequest = async (requestedModel: string) => {
-      const apiKey = localStorage.getItem('VITE_NVIDIA_API_KEY') || import.meta.env.VITE_NVIDIA_API_KEY;
+      // Find the model to determine its provider
+      const modelConfig = ALL_MODELS.find(m => m.id === requestedModel) || settings.customModels?.find(m => m.id === requestedModel);
+      const provider = modelConfig?.provider || 'nvidia';
+      
+      let apiKey = '';
+      let baseUrl = '';
+
+      if (provider === 'gemini') {
+        apiKey = settings.apiKeys?.gemini || '';
+        baseUrl = 'https://generativelanguage.googleapis.com/v1beta/openai/v1'; // Gemini OpenAI compatible endpoint
+      } else if (provider === 'openai') {
+        apiKey = settings.apiKeys?.openai || '';
+        baseUrl = 'https://api.openai.com/v1';
+      } else if (provider === 'custom') {
+        apiKey = settings.apiKeys?.custom || '';
+        baseUrl = settings.customProviderUrl || '';
+      } else {
+        // Default to NVIDIA
+        apiKey = settings.apiKeys?.nvidia || localStorage.getItem('VITE_NVIDIA_API_KEY') || import.meta.env.VITE_NVIDIA_API_KEY || '';
+        baseUrl = 'https://integrate.api.nvidia.com/v1';
+      }
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (apiKey) {
+        headers['x-api-key'] = apiKey;
+      }
+      if (baseUrl) {
+        headers['x-base-url'] = baseUrl;
+      }
       
       const response = await fetch(`${PROXY_BASE}/api/chat/completions`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(apiKey && { 'x-nvidia-api-key': apiKey }),
-        },
+        headers,
         signal,
         body: JSON.stringify({
           model: requestedModel,
@@ -50,11 +78,12 @@ export async function streamChat(
         const notFoundForAccount =
           response.status === 404 && errorText.toLowerCase().includes('not found for account')
 
-        if (notFoundForAccount && requestedModel !== FALLBACK_MODEL) {
+        // Fallback only for NVIDIA default model if not found
+        if (provider === 'nvidia' && notFoundForAccount && requestedModel !== FALLBACK_MODEL) {
           return sendRequest(FALLBACK_MODEL)
         }
 
-        throw new Error(`NVIDIA API error ${response.status}: ${errorText}`)
+        throw new Error(`API error ${response.status}: ${errorText}`)
       }
 
       return response

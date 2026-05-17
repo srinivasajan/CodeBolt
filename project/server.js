@@ -10,24 +10,21 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Proxy endpoint for NVIDIA API
+// Proxy endpoint for OpenAI-compatible APIs (NVIDIA, Gemini, OpenAI, etc.)
 app.post('/api/chat/completions', async (req, res) => {
-  // Try to get API key from environment first, then from request header, then from localStorage (passed by client)
-  let apiKey = process.env.VITE_NVIDIA_API_KEY;
-  
-  if (!apiKey && req.headers['x-nvidia-api-key']) {
-    apiKey = req.headers['x-nvidia-api-key'];
-  }
+  // Read target URL and API key from headers
+  const targetBaseUrl = req.headers['x-base-url'] || 'https://integrate.api.nvidia.com/v1';
+  let apiKey = req.headers['x-api-key'] || req.headers['x-nvidia-api-key'] || process.env.VITE_NVIDIA_API_KEY;
 
   if (!apiKey) {
-    return res.status(400).json({ error: 'NVIDIA API key not configured. Please provide your API key.' });
+    return res.status(400).json({ error: 'API key not configured. Please provide your API key.' });
   }
 
   try {
     const { apiKey: clientApiKey, ...bodyWithoutKey } = req.body;
     const requestBody = clientApiKey && !process.env.VITE_NVIDIA_API_KEY ? bodyWithoutKey : req.body;
     
-    const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+    const response = await fetch(`${targetBaseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

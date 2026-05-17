@@ -9,7 +9,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
-import { NVIDIA_MODELS } from '@/types'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { ALL_MODELS, NVIDIA_MODELS, GEMINI_MODELS, OPENAI_MODELS } from '@/types'
 import { cn } from '@/lib/utils'
 
 interface ModelSelectorProps {
@@ -19,7 +20,39 @@ interface ModelSelectorProps {
 }
 
 export function ModelSelector({ value, onChange, disabled }: ModelSelectorProps) {
-  const current = NVIDIA_MODELS.find((m) => m.id === value) ?? NVIDIA_MODELS[0]
+  const current = ALL_MODELS.find((m) => m.id === value) ?? NVIDIA_MODELS[0]
+
+  const renderModelGroup = (title: string, models: typeof ALL_MODELS) => (
+    <>
+      <DropdownMenuLabel className="text-xs text-muted-foreground">
+        {title}
+      </DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      {models.map((model) => (
+        <DropdownMenuItem
+          key={model.id}
+          onClick={() => onChange(model.id)}
+          className={cn(
+            'flex flex-col items-start gap-0.5 py-2',
+            value === model.id && 'bg-accent'
+          )}
+        >
+          <div className="flex w-full items-center justify-between">
+            <span className="text-sm font-medium">{model.name}</span>
+            {value === model.id && (
+              <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                active
+              </Badge>
+            )}
+          </div>
+          <span className="text-xs text-muted-foreground">{model.description}</span>
+          <span className="text-[10px] text-muted-foreground/60">
+            {(model.contextLength / 1000).toFixed(0)}k context
+          </span>
+        </DropdownMenuItem>
+      ))}
+    </>
+  )
 
   return (
     <DropdownMenu>
@@ -35,34 +68,14 @@ export function ModelSelector({ value, onChange, disabled }: ModelSelectorProps)
           <ChevronDown className="size-3 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-72">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">
-          NVIDIA NIM Models
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {NVIDIA_MODELS.map((model) => (
-          <DropdownMenuItem
-            key={model.id}
-            onClick={() => onChange(model.id)}
-            className={cn(
-              'flex flex-col items-start gap-0.5 py-2',
-              value === model.id && 'bg-accent'
-            )}
-          >
-            <div className="flex w-full items-center justify-between">
-              <span className="text-sm font-medium">{model.name}</span>
-              {value === model.id && (
-                <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-                  active
-                </Badge>
-              )}
-            </div>
-            <span className="text-xs text-muted-foreground">{model.description}</span>
-            <span className="text-[10px] text-muted-foreground/60">
-              {(model.contextLength / 1000).toFixed(0)}k context
-            </span>
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent align="start" className="w-72 p-0">
+        <ScrollArea className="h-[400px] p-1">
+          {renderModelGroup('NVIDIA NIM Models', NVIDIA_MODELS)}
+          <div className="mt-2" />
+          {renderModelGroup('Google Gemini Models', GEMINI_MODELS)}
+          <div className="mt-2" />
+          {renderModelGroup('OpenAI Models', OPENAI_MODELS)}
+        </ScrollArea>
       </DropdownMenuContent>
     </DropdownMenu>
   )

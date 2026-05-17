@@ -4,6 +4,8 @@ import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Sheet,
   SheetContent,
@@ -63,6 +65,16 @@ export function SettingsPanel({ settings, onChange, disabled }: SettingsPanelPro
     }
   }
 
+  const updateApiKey = (provider: keyof ChatSettings['apiKeys'], key: string) => {
+    onChange({
+      ...settings,
+      apiKeys: {
+        ...(settings.apiKeys || {}),
+        [provider]: key,
+      },
+    })
+  }
+
   return (
     <Sheet>
       <Tooltip>
@@ -83,94 +95,164 @@ export function SettingsPanel({ settings, onChange, disabled }: SettingsPanelPro
 
       <SheetContent side="right" className="w-80">
         <SheetHeader>
-          <SheetTitle className="text-base">Generation Settings</SheetTitle>
+          <SheetTitle className="text-base">Settings</SheetTitle>
         </SheetHeader>
 
         <div className="mt-6 flex flex-col gap-6">
-          {/* Temperature */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Temperature</Label>
-              <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
-                {settings.temperature.toFixed(2)}
-              </span>
-            </div>
-            <Slider
-              value={[settings.temperature]}
-              onValueChange={([v]) => onChange({ ...settings, temperature: v })}
-              min={0}
-              max={2}
-              step={0.01}
-            />
-            <p className="text-xs text-muted-foreground">
-              Lower = more focused. Higher = more creative.
-            </p>
-          </div>
+          <Tabs defaultValue="general" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="providers">Providers</TabsTrigger>
+            </TabsList>
 
-          <Separator />
+            <TabsContent value="general" className="flex flex-col gap-6">
+              {/* Temperature */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Temperature</Label>
+                  <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
+                    {settings.temperature.toFixed(2)}
+                  </span>
+                </div>
+                <Slider
+                  value={[settings.temperature]}
+                  onValueChange={([v]) => onChange({ ...settings, temperature: v })}
+                  min={0}
+                  max={2}
+                  step={0.01}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Lower = more focused. Higher = more creative.
+                </p>
+              </div>
 
-          {/* Max Tokens */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Max Tokens</Label>
-              <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
-                {settings.maxTokens.toLocaleString()}
-              </span>
-            </div>
-            <Slider
-              value={[settings.maxTokens]}
-              onValueChange={([v]) => onChange({ ...settings, maxTokens: v })}
-              min={256}
-              max={32768}
-              step={256}
-            />
-            <p className="text-xs text-muted-foreground">
-              Maximum response length in tokens.
-            </p>
-          </div>
+              <Separator />
 
-          <Separator />
+              {/* Max Tokens */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Max Tokens</Label>
+                  <span className="rounded bg-muted px-2 py-0.5 font-mono text-xs">
+                    {settings.maxTokens.toLocaleString()}
+                  </span>
+                </div>
+                <Slider
+                  value={[settings.maxTokens]}
+                  onValueChange={([v]) => onChange({ ...settings, maxTokens: v })}
+                  min={256}
+                  max={32768}
+                  step={256}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Maximum response length in tokens.
+                </p>
+              </div>
 
-          {/* Personas / System Prompt */}
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-2">
-              <Label className="text-sm font-medium">AI Persona</Label>
-              <Select value={currentPersona} onValueChange={handlePersonaChange}>
-                <SelectTrigger className="w-full text-xs">
-                  <SelectValue placeholder="Select a persona" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PERSONAS.map(p => (
-                    <SelectItem key={p.id} value={p.id} className="text-xs">
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="custom" className="text-xs italic text-muted-foreground">
-                    Custom Prompt...
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <Separator />
 
-            <div className="flex flex-col gap-2 mt-2">
-              <Label className="text-sm font-medium text-muted-foreground">Custom Instructions</Label>
-              <Textarea
-                value={settings.systemPrompt}
-                onChange={(e) => onChange({ ...settings, systemPrompt: e.target.value })}
-                placeholder="You are a helpful assistant..."
-                className="min-h-[140px] resize-none text-xs"
-              />
-            </div>
-          </div>
+              {/* Personas / System Prompt */}
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
+                  <Label className="text-sm font-medium">AI Persona</Label>
+                  <Select value={currentPersona} onValueChange={handlePersonaChange}>
+                    <SelectTrigger className="w-full text-xs">
+                      <SelectValue placeholder="Select a persona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PERSONAS.map(p => (
+                        <SelectItem key={p.id} value={p.id} className="text-xs">
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="custom" className="text-xs italic text-muted-foreground">
+                        Custom Prompt...
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onChange(DEFAULT_SETTINGS)}
-            className="w-full mt-4"
-          >
-            Reset to Defaults
-          </Button>
+                <div className="flex flex-col gap-2 mt-2">
+                  <Label className="text-sm font-medium text-muted-foreground">Custom Instructions</Label>
+                  <Textarea
+                    value={settings.systemPrompt}
+                    onChange={(e) => onChange({ ...settings, systemPrompt: e.target.value })}
+                    placeholder="You are a helpful assistant..."
+                    className="min-h-[140px] resize-none text-xs"
+                  />
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onChange(DEFAULT_SETTINGS)}
+                className="w-full mt-4"
+              >
+                Reset to Defaults
+              </Button>
+            </TabsContent>
+
+            <TabsContent value="providers" className="flex flex-col gap-4">
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Configure your own API keys. Keys are stored locally in your browser.
+                </p>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">NVIDIA API Key</Label>
+                  <Input 
+                    type="password" 
+                    placeholder="nvapi-..." 
+                    value={settings.apiKeys?.nvidia || ''}
+                    onChange={(e) => updateApiKey('nvidia', e.target.value)}
+                    className="text-xs h-8"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Google Gemini API Key</Label>
+                  <Input 
+                    type="password" 
+                    placeholder="AIzaSy..." 
+                    value={settings.apiKeys?.gemini || ''}
+                    onChange={(e) => updateApiKey('gemini', e.target.value)}
+                    className="text-xs h-8"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">OpenAI API Key</Label>
+                  <Input 
+                    type="password" 
+                    placeholder="sk-..." 
+                    value={settings.apiKeys?.openai || ''}
+                    onChange={(e) => updateApiKey('openai', e.target.value)}
+                    className="text-xs h-8"
+                  />
+                </div>
+
+                <Separator className="my-2" />
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Custom OpenAI-Compatible Provider</Label>
+                  <Input 
+                    type="text" 
+                    placeholder="Base URL (e.g., https://api.groq.com/openai/v1)" 
+                    value={settings.customProviderUrl || ''}
+                    onChange={(e) => onChange({ ...settings, customProviderUrl: e.target.value })}
+                    className="text-xs h-8 mb-2"
+                  />
+                  <Input 
+                    type="password" 
+                    placeholder="API Key" 
+                    value={settings.apiKeys?.custom || ''}
+                    onChange={(e) => updateApiKey('custom', e.target.value)}
+                    className="text-xs h-8"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </SheetContent>
     </Sheet>
