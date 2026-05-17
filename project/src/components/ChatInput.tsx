@@ -202,8 +202,8 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
   }
 
   return (
-    <div className="border-t border-border bg-background/80 px-4 py-3 backdrop-blur-sm">
-      <div className="mx-auto max-w-3xl">
+    <div className="bg-background px-4 py-4">
+      <div className="mx-auto max-w-4xl">
         {(images.length > 0 || attachedFiles.length > 0) && (
           <div className="mb-3 flex flex-wrap gap-2">
             {images.map((img, idx) => (
@@ -211,7 +211,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
                 <img src={img} alt="Attachment" className="object-cover w-full h-full" />
                 <button
                   onClick={() => removeImage(idx)}
-                  className="absolute top-1 right-1 p-0.5 rounded-full bg-background/80 text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 right-1 p-0.5 rounded-md bg-background/80 text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <X className="size-3" />
                 </button>
@@ -219,13 +219,13 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
             ))}
             
             {attachedFiles.map((f, idx) => (
-              <div key={`file-${idx}`} className="flex items-center gap-1.5 rounded-md border border-border bg-card shadow-sm px-2.5 py-1.5 text-xs group">
+              <div key={`file-${idx}`} className="flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-xs group">
                 <FileText className="size-3.5 text-muted-foreground" />
                 <span className="max-w-[150px] truncate font-medium text-foreground/80">{f.name}</span>
                 <span className="text-[10px] text-muted-foreground">({Math.round(f.size / 1024)}kb)</span>
                 <button
                   onClick={() => removeAttachedFile(idx)}
-                  className="ml-1 rounded-full p-0.5 opacity-0 group-hover:opacity-100 hover:bg-muted text-muted-foreground transition-all"
+                  className="ml-1 rounded-md p-0.5 opacity-0 group-hover:opacity-100 hover:bg-muted-foreground/20 text-muted-foreground transition-all"
                 >
                   <X className="size-3" />
                 </button>
@@ -236,8 +236,8 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
         
         <div
           className={cn(
-            'flex items-end gap-2 rounded-xl border border-border bg-card shadow-sm transition-colors',
-            'focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50',
+            'flex items-end gap-2 rounded-md border border-border/60 bg-background transition-colors',
+            'focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20',
             disabled && 'opacity-60'
           )}
         >

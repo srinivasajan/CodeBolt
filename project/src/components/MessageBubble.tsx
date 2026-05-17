@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Copy, Check, RefreshCw, User, Zap, GitFork } from 'lucide-react'
+import { Copy, Check, RefreshCw, User, Zap, GitFork, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CodeBlock } from '@/components/CodeBlock'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,39 @@ interface MessageBubbleProps {
   onFork?: (id: string) => void
 }
 
+function parseMessageContent(rawContent: string) {
+  if (rawContent.trim().startsWith('[') && rawContent.trim().endsWith(']')) {
+    try {
+      const parsed = JSON.parse(rawContent)
+      if (Array.isArray(parsed)) {
+        return { isJson: true, parsed, text: '', files: [] }
+      }
+    } catch {
+      // ignore and fallback
+    }
+  }
+
+  const filePrefix = '--- File: '
+  const fileSuffix = ' ---\n'
+  
+  if (!rawContent.includes(filePrefix)) {
+    return { isJson: false, text: rawContent, files: [] }
+  }
+
+  const parts = rawContent.split(filePrefix)
+  const text = parts[0].trim()
+  const files: string[] = []
+
+  for (let i = 1; i < parts.length; i++) {
+    const endIdx = parts[i].indexOf(fileSuffix)
+    if (endIdx !== -1) {
+      files.push(parts[i].substring(0, endIdx))
+    }
+  }
+
+  return { isJson: false, text, files }
+}
+
 export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPreview, onFork }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false)
 
@@ -28,58 +61,60 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPr
 
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
+  
+  const { isJson, parsed, text, files } = parseMessageContent(message.content)
 
   return (
-    <div
-      className={cn(
-        'group flex w-full gap-3 px-4 py-3 sm:px-6',
-        isUser ? 'justify-end' : 'justify-start'
-      )}
-    >
-      {/* Avatar */}
-      {isAssistant && (
-        <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-primary">
-          <Zap className="size-3.5 text-primary-foreground" />
-        </div>
-      )}
-
-      {/* Content */}
-      <div
-        className={cn(
-          'flex max-w-[90%] flex-col gap-2 sm:max-w-[80%]',
-          isUser ? 'items-end' : 'items-start'
-        )}
-      >
-        {isUser ? (
-          <div className="rounded-2xl rounded-tr-sm bg-primary px-4 py-3 text-sm text-primary-foreground shadow-lg shadow-primary/10 ring-1 ring-inset ring-white/10">
-            {(() => {
-              try {
-                if (message.content.trim().startsWith('[') && message.content.trim().endsWith(']')) {
-                  const parsed = JSON.parse(message.content)
-                  if (Array.isArray(parsed)) {
-                    return (
-                      <div className="flex flex-col gap-3">
-                        {parsed.map((item: any, idx: number) => {
-                          if (item.type === 'text') {
-                            return <p key={idx} className="whitespace-pre-wrap leading-relaxed">{item.text}</p>
-                          }
-                          if (item.type === 'image_url') {
-                            return <img key={idx} src={item.image_url.url} alt="User attachment" className="max-w-[300px] w-full rounded-lg object-contain max-h-[300px] bg-black/10" />
-                          }
-                          return null
-                        })}
-                      </div>
-                    )
-                  }
-                }
-              } catch {
-                // fallback to normal text
-              }
-              return <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
-            })()}
+    <div className="group flex w-full flex-col gap-2 px-4 py-4 sm:px-6 hover:bg-muted/30 transition-colors border-b border-border/40 last:border-0">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        {isAssistant ? (
+          <div className="flex size-6 items-center justify-center rounded-md bg-primary">
+            <Zap className="size-3.5 text-primary-foreground" />
           </div>
         ) : (
-          <div className="w-full rounded-2xl border border-border/60 bg-card/70 px-4 py-3 shadow-sm backdrop-blur-sm sm:px-5 sm:py-4">
+          <div className="flex size-6 items-center justify-center rounded-md bg-muted-foreground/20">
+            <User className="size-3.5 text-foreground" />
+          </div>
+        )}
+        <span className="text-sm font-semibold text-foreground">
+          {isAssistant ? 'CodeBolt' : 'You'}
+        </span>
+      </div>
+
+      {/* Content */}
+      <div className="flex w-full flex-col gap-2 pl-8">
+        {files.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-1 mt-1">
+            {files.map((file, idx) => (
+              <div key={idx} className="flex items-center gap-1.5 rounded-md border border-border bg-background shadow-sm px-2.5 py-1.5 text-xs">
+                <FileText className="size-3.5 text-muted-foreground" />
+                <span className="font-medium text-muted-foreground">{file}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isUser ? (
+          <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+            {isJson ? (
+              <div className="flex flex-col gap-3">
+                {parsed.map((item: any, idx: number) => {
+                  if (item.type === 'text') {
+                    return <p key={idx} className="whitespace-pre-wrap leading-relaxed">{item.text}</p>
+                  }
+                  if (item.type === 'image_url') {
+                    return <img key={idx} src={item.image_url.url} alt="User attachment" className="max-w-[300px] w-full rounded-lg object-contain max-h-[300px] bg-black/10 border border-border/50" />
+                  }
+                  return null
+                })}
+              </div>
+            ) : (
+              <p>{text}</p>
+            )}
+          </div>
+        ) : (
+          <div className="w-full text-sm text-foreground/90">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
@@ -90,7 +125,7 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPr
                   if (isInline) {
                     return (
                       <code
-                        className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.8em] text-foreground"
+                        className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.8em] text-foreground border border-border/50"
                         {...props}
                       >
                         {children}
@@ -166,7 +201,7 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPr
                 },
               }}
             >
-              {message.content}
+              {text}
             </ReactMarkdown>
             {isStreaming && <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-primary" />}
           </div>
@@ -174,12 +209,12 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPr
 
         {/* Actions */}
         {!isStreaming && (
-          <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="flex items-center gap-1 mt-1 opacity-0 transition-opacity group-hover:opacity-100">
             <Button
               variant="ghost"
               size="icon-xs"
               onClick={copyMessage}
-              className="size-6 text-muted-foreground"
+              className="size-6 text-muted-foreground hover:text-foreground"
               title="Copy message"
             >
               {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
@@ -189,7 +224,7 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPr
                 variant="ghost"
                 size="icon-xs"
                 onClick={() => onFork(message.id)}
-                className="size-6 text-muted-foreground"
+                className="size-6 text-muted-foreground hover:text-foreground"
                 title="Fork chat from here"
               >
                 <GitFork className="size-3" />
@@ -200,7 +235,7 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPr
                 variant="ghost"
                 size="icon-xs"
                 onClick={onRegenerate}
-                className="size-6 text-muted-foreground"
+                className="size-6 text-muted-foreground hover:text-foreground"
                 title="Regenerate response"
               >
                 <RefreshCw className="size-3" />
@@ -209,13 +244,6 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPr
           </div>
         )}
       </div>
-
-      {/* User avatar */}
-      {isUser && (
-        <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">
-          <User className="size-3.5 text-muted-foreground" />
-        </div>
-      )}
     </div>
   )
 }
