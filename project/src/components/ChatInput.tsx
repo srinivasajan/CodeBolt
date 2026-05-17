@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils'
 import JSZip from 'jszip'
 import { toast } from 'sonner'
+import type { VirtualFile } from '@/hooks/useProjectFiles'
 
 interface AttachedFile {
   name: string
@@ -18,9 +19,10 @@ interface ChatInputProps {
   isStreaming: boolean
   disabled?: boolean
   placeholder?: string
+  onProjectLoad?: (files: VirtualFile[], projectName: string) => void
 }
 
-export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }: ChatInputProps) {
+export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder, onProjectLoad }: ChatInputProps) {
   const [value, setValue] = useState('')
   const [images, setImages] = useState<string[]>([])
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([])
@@ -141,6 +143,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
               let combinedContent = ''
               let totalSize = 0
               let fileCount = 0
+              const extractedVirtualFiles: import('@/hooks/useProjectFiles').VirtualFile[] = []
 
               for (const [filename, zipEntry] of Object.entries(zipContent.files)) {
                 if (zipEntry.dir) continue
@@ -152,9 +155,20 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
                 combinedContent += `\n\n--- File: ${filename} ---\n${textContent}`
                 totalSize += textContent.length
                 fileCount++
+                // Collect for file explorer
+                const parts = filename.split('/')
+                extractedVirtualFiles.push({
+                  path: filename,
+                  name: parts[parts.length - 1],
+                  content: textContent,
+                })
               }
 
               if (fileCount > 0) {
+                // Populate the file explorer with extracted files
+                if (onProjectLoad) {
+                  onProjectLoad(extractedVirtualFiles, file.name)
+                }
                 setAttachedFiles(prev => [...prev, {
                   name: `${file.name} (${fileCount} files)`,
                   content: combinedContent.trim(),

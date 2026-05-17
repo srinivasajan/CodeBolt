@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Zap, LogOut, DownloadCloud, Code2, X, LayoutTemplate, Columns2 } from 'lucide-react'
+import { Plus, Zap, LogOut, DownloadCloud, Code2, X, LayoutTemplate, Columns2, FolderInput } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -11,12 +11,16 @@ import { ChatInput } from '@/components/ChatInput'
 import { ModelSelector } from '@/components/ModelSelector'
 import { SettingsPanel } from '@/components/SettingsPanel'
 import { CodePreviewPanel } from '@/components/CodePreviewPanel'
+import { FileExplorer } from '@/components/FileExplorer'
+import { CodeEditor } from '@/components/CodeEditor'
+import { useProjectFiles } from '@/hooks/useProjectFiles'
 import { useChats } from '@/hooks/useChats'
 import { useMessages } from '@/hooks/useMessages'
 import { cn } from '@/lib/utils'
 import type { Chat } from '@/types'
 import { NVIDIA_MODELS } from '@/types'
 import { supabase } from '@/lib/supabase'
+import JSZip from 'jszip'
 
 export default function ChatApp() {
   const navigate = useNavigate()
@@ -24,6 +28,13 @@ export default function ChatApp() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [isIdeMode, setIsIdeMode] = useState(false)
   const [previewCode, setPreviewCode] = useState<string | null>(null)
+  const folderInputRef = useRef<HTMLInputElement>(null)
+  const zipInputRef = useRef<HTMLInputElement>(null)
+
+  const {
+    files, fileList, fileTree, activeFile, projectName,
+    loadFiles, openFile, clearProject, setActiveFile
+  } = useProjectFiles()
 
   const {
     chats,
@@ -206,6 +217,83 @@ export default function ChatApp() {
     toast.success('Chat branched successfully!')
   }, [activeChatId, activeChat, messages, createChat, renameChat])
 
+  // Open Folder handler - supports File System Access API + ZIP fallback
+  const handleOpenFolder = useCallback(async () => {
+    // Try File System Access API first (Chrome/Edge)
+    if ('showDirectoryPicker' in window) {
+      try {
+        const dirHandle = await (window as any).showDirectoryPicker()
+        const allFiles: import('@/hooks/useProjectFiles').VirtualFile[] = []
+        const skipExts = /\.(png|jpg|jpeg|gif|ico|pdf|zip|tar|gz|mp4|webm|mp3|wav|ogg|wasm|exe|bin|dll|so|dylib)$/i
+        const skipDirs = new Set(['node_modules', '.git', '.next', 'dist', 'build', '__pycache__'])
+
+        async function readDir(handle: any, basePath: string) {
+          for await (const [name, entry] of handle.entries()) {
+            if (entry.kind === 'directory') {
+              if (!skipDirs.has(name)) await readDir(entry, basePath ? `${basePath}/${name}` : name)
+            } else if (!skipExts.test(name)) {
+              const file = await entry.getFile()
+              const content = await file.text()
+              const path = basePath ? `${basePath}/${name}` : name
+              allFiles.push({ path, name, content })
+            }
+          }
+        }
+
+        await readDir(dirHandle, '')
+        if (allFiles.length > 0) {
+          loadFiles(allFiles, dirHandle.name)
+          toast.success(`Loaded ${allFiles.length} files from "${dirHandle.name}"`)
+        } else {
+          toast.error('No readable files found in folder')
+        }
+        return
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          // Fallback to ZIP input
+          zipInputRef.current?.click()
+        }
+        return
+      }
+    }
+    // Fallback: click ZIP/folder input
+    zipInputRef.current?.click()
+  }, [loadFiles])
+
+  const handleZipInput = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (e.target.value) e.target.value = ''
+
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      if (!(ev.target?.result instanceof ArrayBuffer)) return
+      try {
+        const zip = new JSZip()
+        const zipContent = await zip.loadAsync(ev.target.result)
+        const allFiles: import('@/hooks/useProjectFiles').VirtualFile[] = []
+        const skipExts = /\.(png|jpg|jpeg|gif|ico|pdf|zip|tar|gz|mp4|webm|mp3|wav|ogg|wasm|exe)$/i
+
+        for (const [filename, entry] of Object.entries(zipContent.files)) {
+          if (entry.dir || filename.includes('node_modules/') || filename.includes('.git/') || skipExts.test(filename)) continue
+          const content = await entry.async('string')
+          const parts = filename.split('/')
+          allFiles.push({ path: filename, name: parts[parts.length - 1], content })
+        }
+
+        if (allFiles.length > 0) {
+          loadFiles(allFiles, file.name.replace('.zip', ''))
+          toast.success(`Loaded ${allFiles.length} files from "${file.name}"`)
+        } else {
+          toast.error('No readable files found in ZIP')
+        }
+      } catch (err) {
+        toast.error('Failed to read ZIP file')
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  }, [loadFiles])
+
   // Auto-select first chat
   useEffect(() => {
     if (!chatsLoading && chats.length > 0 && !activeChatId) {
@@ -321,10 +409,31 @@ export default function ChatApp() {
 
              {isIdeMode ? (
                <>
+               {/* IDE Mode: File Explorer (left) */}
+                 <div className="w-60 shrink-0 border-r border-border flex flex-col h-full">
+                   <FileExplorer
+                     fileTree={fileTree}
+                     projectName={projectName}
+                     activeFilePath={activeFile?.path}
+                     onFileOpen={setActiveFile}
+                     onOpenFolder={handleOpenFolder}
+                     onClearProject={clearProject}
+                   />
+                 </div>
+
                  {/* IDE Mode: Code Editor (center) */}
-                 <div className="flex flex-1 flex-col h-full bg-background">
+                 <div className="flex flex-1 flex-col h-full bg-background overflow-hidden">
+                   {/* Editor Tabs */}
                    <div className="flex h-9 shrink-0 items-end border-b border-border bg-muted/20 px-2 pt-1 overflow-x-auto">
-                     {previewCode ? (
+                     {activeFile ? (
+                       <div className="flex h-8 items-center border-t border-x border-border bg-background px-4 text-xs font-medium text-foreground relative top-px rounded-t-sm">
+                         <Code2 className="mr-2 size-3.5 text-blue-400" />
+                         {activeFile.name}
+                         <button onClick={() => setActiveFile(null)} className="ml-2 rounded-sm p-0.5 hover:bg-muted text-muted-foreground">
+                           <X className="size-3" />
+                         </button>
+                       </div>
+                     ) : previewCode ? (
                        <div className="flex h-8 items-center border-t border-x border-border bg-background px-4 text-xs font-medium text-foreground relative top-px rounded-t-sm">
                          <Code2 className="mr-2 size-3.5 text-blue-400" /> preview.tsx
                          <button onClick={() => setPreviewCode(null)} className="ml-2 rounded-sm p-0.5 hover:bg-muted text-muted-foreground">
@@ -338,13 +447,12 @@ export default function ChatApp() {
                      )}
                    </div>
                    <div className="flex-1 relative overflow-hidden">
-                     {previewCode ? (
+                     {activeFile ? (
+                       <CodeEditor file={activeFile} />
+                     ) : previewCode ? (
                        <CodePreviewPanel code={previewCode} onClose={() => setPreviewCode(null)} />
                      ) : (
-                       <div className="flex flex-col items-center justify-center h-full text-muted-foreground/20 gap-3 select-none">
-                         <Code2 className="size-24 opacity-20" />
-                         <p className="text-xs font-medium tracking-widest uppercase opacity-50">No editor open</p>
-                       </div>
+                       <CodeEditor file={null} />
                      )}
                    </div>
                  </div>
@@ -370,6 +478,7 @@ export default function ChatApp() {
                        isStreaming={isStreaming}
                        disabled={!activeChatId}
                        placeholder={activeChatId ? 'Message CODEBOLT...' : 'Create a new chat...'}
+                       onProjectLoad={loadFiles}
                      />
                    </div>
                  </div>
@@ -395,6 +504,7 @@ export default function ChatApp() {
                          isStreaming={isStreaming}
                          disabled={!activeChatId}
                          placeholder={activeChatId ? 'Message CODEBOLT...' : 'Create a new chat...'}
+                         onProjectLoad={loadFiles}
                        />
                      </div>
                    </div>
@@ -423,6 +533,16 @@ export default function ChatApp() {
            </div>
         </div>
       </div>
+
+      {/* Hidden ZIP input for fallback folder loading */}
+      <input
+        ref={zipInputRef}
+        type="file"
+        accept=".zip"
+        className="hidden"
+        onChange={handleZipInput}
+      />
+
       <Toaster />
     </TooltipProvider>
   )
