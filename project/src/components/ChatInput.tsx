@@ -138,7 +138,9 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
             try {
               const zip = new JSZip()
               const zipContent = await zip.loadAsync(e.target.result)
-              const extractedFiles: AttachedFile[] = []
+              let combinedContent = ''
+              let totalSize = 0
+              let fileCount = 0
 
               for (const [filename, zipEntry] of Object.entries(zipContent.files)) {
                 if (zipEntry.dir) continue
@@ -147,15 +149,24 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
                   continue
                 }
                 const textContent = await zipEntry.async('string')
-                extractedFiles.push({
-                  name: filename,
-                  content: textContent,
-                  size: textContent.length
-                })
+                combinedContent += `\n\n--- File: ${filename} ---\n${textContent}`
+                totalSize += textContent.length
+                fileCount++
               }
-              setAttachedFiles(prev => [...prev, ...extractedFiles])
+
+              if (fileCount > 0) {
+                setAttachedFiles(prev => [...prev, {
+                  name: `${file.name} (${fileCount} files)`,
+                  content: combinedContent.trim(),
+                  size: totalSize
+                }])
+                toast.success(`Extracted ${fileCount} files from ${file.name}`)
+              } else {
+                toast.error(`No text files found in ${file.name}`)
+              }
             } catch (err) {
               console.error('Failed to parse ZIP', err)
+              toast.error(`Failed to parse ${file.name}`)
             }
           }
         }
