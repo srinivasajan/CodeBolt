@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import {
-  Plus, MessageSquare, Trash2, Pencil, Check, X, ChevronRight, Zap,
+  Plus, MessageSquare, Trash2, Pencil, Check, X, ChevronRight,
   Search, Folder, FolderPlus, MoreVertical, Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'

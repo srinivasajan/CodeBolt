@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { Plus, Zap, LogOut, DownloadCloud, Code2, MessageSquare, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, Zap, LogOut, DownloadCloud, Code2, X, LayoutTemplate } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,7 @@ import { supabase } from '@/lib/supabase'
 export default function ChatApp() {
   const navigate = useNavigate()
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
-
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [previewCode, setPreviewCode] = useState<string | null>(null)
 
   const {

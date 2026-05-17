@@ -4,7 +4,6 @@ import remarkGfm from 'remark-gfm'
 import { Copy, Check, RefreshCw, User, Zap, GitFork, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CodeBlock } from '@/components/CodeBlock'
-import { cn } from '@/lib/utils'
 import type { Message } from '@/types'
 
 interface MessageBubbleProps {
@@ -99,7 +98,7 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPr
           <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
             {isJson ? (
               <div className="flex flex-col gap-3">
-                {parsed.map((item: any, idx: number) => {
+                {(parsed ?? []).map((item: any, idx: number) => {
                   if (item.type === 'text') {
                     return <p key={idx} className="whitespace-pre-wrap leading-relaxed">{item.text}</p>
                   }
