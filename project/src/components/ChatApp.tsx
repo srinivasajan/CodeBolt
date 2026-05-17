@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Zap, LogOut, DownloadCloud, Code2, X, LayoutTemplate } from 'lucide-react'
+import { Plus, Zap, LogOut, DownloadCloud, Code2, X, LayoutTemplate, Columns2 } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,7 @@ export default function ChatApp() {
   const navigate = useNavigate()
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [isIdeMode, setIsIdeMode] = useState(false)
   const [previewCode, setPreviewCode] = useState<string | null>(null)
 
   const {
@@ -281,6 +282,22 @@ export default function ChatApp() {
                  <Tooltip>
                    <TooltipTrigger asChild>
                      <Button
+                       variant={isIdeMode ? 'secondary' : 'ghost'}
+                       size="icon-sm"
+                       onClick={() => setIsIdeMode(!isIdeMode)}
+                       className={cn(
+                         'size-8 transition-colors',
+                         isIdeMode ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'
+                       )}
+                     >
+                       <Columns2 className="size-4" />
+                     </Button>
+                   </TooltipTrigger>
+                   <TooltipContent>Toggle IDE Mode</TooltipContent>
+                 </Tooltip>
+                 <Tooltip>
+                   <TooltipTrigger asChild>
+                     <Button
                        variant="ghost"
                        size="icon-sm"
                        onClick={handleExportChat}
@@ -301,10 +318,42 @@ export default function ChatApp() {
 
            {/* Workspace Area */}
            <div className="flex flex-1 overflow-hidden">
-             
-             {/* Center Chat Area */}
-             <div className="flex flex-1 flex-col h-full items-center bg-background/50">
-                <div className="w-full max-w-4xl flex-1 flex flex-col relative">
+
+             {isIdeMode ? (
+               <>
+                 {/* IDE Mode: Code Editor (center) */}
+                 <div className="flex flex-1 flex-col h-full bg-background">
+                   <div className="flex h-9 shrink-0 items-end border-b border-border bg-muted/20 px-2 pt-1 overflow-x-auto">
+                     {previewCode ? (
+                       <div className="flex h-8 items-center border-t border-x border-border bg-background px-4 text-xs font-medium text-foreground relative top-px rounded-t-sm">
+                         <Code2 className="mr-2 size-3.5 text-blue-400" /> preview.tsx
+                         <button onClick={() => setPreviewCode(null)} className="ml-2 rounded-sm p-0.5 hover:bg-muted text-muted-foreground">
+                           <X className="size-3" />
+                         </button>
+                       </div>
+                     ) : (
+                       <div className="flex h-8 items-center px-4 text-xs text-muted-foreground">
+                         <Code2 className="mr-2 size-3.5 opacity-40" /> No file open
+                       </div>
+                     )}
+                   </div>
+                   <div className="flex-1 relative overflow-hidden">
+                     {previewCode ? (
+                       <CodePreviewPanel code={previewCode} onClose={() => setPreviewCode(null)} />
+                     ) : (
+                       <div className="flex flex-col items-center justify-center h-full text-muted-foreground/20 gap-3 select-none">
+                         <Code2 className="size-24 opacity-20" />
+                         <p className="text-xs font-medium tracking-widest uppercase opacity-50">No editor open</p>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+
+                 {/* IDE Mode: Chat (right sidebar) */}
+                 <div className="w-[420px] shrink-0 border-l border-border flex flex-col h-full bg-sidebar">
+                   <div className="flex h-9 shrink-0 items-center border-b border-border px-3 bg-muted/10">
+                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">AI Assistant</span>
+                   </div>
                    <ChatArea
                      messages={messages}
                      isStreaming={isStreaming}
@@ -314,38 +363,61 @@ export default function ChatApp() {
                      onPreview={(code) => setPreviewCode(code)}
                      onFork={handleForkChat}
                    />
-                   <div className="px-4 pb-6 w-full">
+                   <div className="px-3 pb-3">
                      <ChatInput
                        onSend={handleSend}
                        onStop={stopStreaming}
                        isStreaming={isStreaming}
                        disabled={!activeChatId}
-                       placeholder={
-                         activeChatId
-                           ? 'Message CODEBOLT...'
-                           : 'Create a new chat...'
-                       }
+                       placeholder={activeChatId ? 'Message CODEBOLT...' : 'Create a new chat...'}
                      />
                    </div>
-                </div>
-             </div>
-
-             {/* Right Artifact Panel */}
-             {previewCode && (
-               <div className="w-[50%] border-l border-border/60 flex flex-col h-full bg-background shadow-2xl shrink-0 transition-all">
-                 <div className="flex h-12 shrink-0 items-center justify-between border-b border-border/50 px-4 bg-muted/10">
-                   <div className="flex items-center gap-2">
-                     <Code2 className="size-4 text-blue-400" />
-                     <span className="text-sm font-medium">Artifact Preview</span>
+                 </div>
+               </>
+             ) : (
+               <>
+                 {/* Antigravity Mode: Chat (center) */}
+                 <div className="flex flex-1 flex-col h-full items-center bg-background/50">
+                   <div className="w-full max-w-4xl flex-1 flex flex-col relative">
+                     <ChatArea
+                       messages={messages}
+                       isStreaming={isStreaming}
+                       streamingContent={streamingContent}
+                       chatId={activeChatId}
+                       onRegenerate={handleRegenerate}
+                       onPreview={(code) => setPreviewCode(code)}
+                       onFork={handleForkChat}
+                     />
+                     <div className="px-4 pb-6 w-full">
+                       <ChatInput
+                         onSend={handleSend}
+                         onStop={stopStreaming}
+                         isStreaming={isStreaming}
+                         disabled={!activeChatId}
+                         placeholder={activeChatId ? 'Message CODEBOLT...' : 'Create a new chat...'}
+                       />
+                     </div>
                    </div>
-                   <Button variant="ghost" size="icon-sm" onClick={() => setPreviewCode(null)} className="size-7 text-muted-foreground">
-                     <X className="size-4" />
-                   </Button>
                  </div>
-                 <div className="flex-1 overflow-hidden relative">
-                   <CodePreviewPanel code={previewCode} onClose={() => setPreviewCode(null)} />
-                 </div>
-               </div>
+
+                 {/* Antigravity Mode: Artifact (right slide-out) */}
+                 {previewCode && (
+                   <div className="w-[50%] border-l border-border/60 flex flex-col h-full bg-background shrink-0">
+                     <div className="flex h-12 shrink-0 items-center justify-between border-b border-border/50 px-4 bg-muted/10">
+                       <div className="flex items-center gap-2">
+                         <Code2 className="size-4 text-blue-400" />
+                         <span className="text-sm font-medium">Artifact Preview</span>
+                       </div>
+                       <Button variant="ghost" size="icon-sm" onClick={() => setPreviewCode(null)} className="size-7 text-muted-foreground">
+                         <X className="size-4" />
+                       </Button>
+                     </div>
+                     <div className="flex-1 overflow-hidden relative">
+                       <CodePreviewPanel code={previewCode} onClose={() => setPreviewCode(null)} />
+                     </div>
+                   </div>
+                 )}
+               </>
              )}
 
            </div>
