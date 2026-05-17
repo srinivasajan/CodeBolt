@@ -21,7 +21,7 @@ import type { Chat } from '@/types'
 import { NVIDIA_MODELS } from '@/types'
 import { supabase } from '@/lib/supabase'
 import JSZip from 'jszip'
-import { parseFileEdits } from '@/lib/fileEdits'
+import { parseFileActions } from '@/lib/fileEdits'
 
 export default function ChatApp() {
   const navigate = useNavigate()
@@ -34,7 +34,7 @@ export default function ChatApp() {
 
   const {
     fileTree, activeFile, projectName, fileList,
-    loadFiles, clearProject, setActiveFile, updateFile
+    loadFiles, clearProject, setActiveFile, updateFile, deleteFile
   } = useProjectFiles()
 
   const {
@@ -137,17 +137,31 @@ export default function ChatApp() {
         activeModel,
         (title) => { updateChatTitle(activeChatId, title) },
         images,
-        // Auto-apply file edits when stream completes
+        // Auto-apply file edits/deletes when stream completes
         (fullResponse) => {
-          const edits = parseFileEdits(fullResponse)
-          if (edits.length > 0) {
-            edits.forEach(edit => updateFile(edit.path, edit.content))
-            toast.success(`✅ Applied ${edits.length} file edit${edits.length > 1 ? 's' : ''}`)
+          const actions = parseFileActions(fullResponse)
+          if (actions.length > 0) {
+            let edits = 0
+            let deletes = 0
+            actions.forEach(act => {
+              if (act.type === 'edit') {
+                updateFile(act.path, act.content ?? '')
+                edits++
+              } else if (act.type === 'delete') {
+                deleteFile(act.path)
+                deletes++
+              }
+            })
+            const toastMsg = [
+              edits > 0 ? `applied ${edits} file edit${edits > 1 ? 's' : ''}` : '',
+              deletes > 0 ? `deleted ${deletes} file${deletes > 1 ? 's' : ''}` : ''
+            ].filter(Boolean).join(' and ')
+            toast.success(`✅ Successfully ${toastMsg}`)
           }
         }
       )
     },
-    [activeChatId, activeModel, sendMessage, updateChatTitle, isIdeMode, fileList, activeFile, projectName, updateFile]
+    [activeChatId, activeModel, sendMessage, updateChatTitle, isIdeMode, fileList, activeFile, projectName, updateFile, deleteFile]
   )
 
   const handleRegenerate = useCallback(() => {

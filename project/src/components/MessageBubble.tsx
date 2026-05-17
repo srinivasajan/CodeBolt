@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Copy, Check, RefreshCw, User, Zap, GitFork, FileCode2, CheckCircle2 } from 'lucide-react'
+import { Copy, Check, RefreshCw, User, Zap, GitFork, FileCode2, CheckCircle2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CodeBlock } from '@/components/CodeBlock'
 import type { Message } from '@/types'
@@ -15,25 +15,41 @@ interface MessageBubbleProps {
   onFork?: (id: string) => void
 }
 
-/** Extract <edit_file path="...">...</edit_file> blocks from raw AI response.
- *  Returns: clean display text + list of changed file paths */
-function extractFileEdits(raw: string): { displayText: string; editedPaths: string[] } {
-  const editedPaths: string[] = []
-  const regex = /<edit_file\s+path=["']([^"']+)["'][^>]*>[\s\S]*?<\/edit_file>/gi
+interface ParsedActions {
+  displayText: string
+  editedPaths: string[]
+  deletedPaths: string[]
+}
 
-  let match: RegExpExecArray | null
-  while ((match = regex.exec(raw)) !== null) {
-    editedPaths.push(match[1].trim())
+/** Extract <edit_file path="...">...</edit_file> and <delete_file path="..." /> blocks from raw AI response.
+ *  Returns: clean display text + list of changed & deleted file paths */
+function extractFileActions(raw: string): ParsedActions {
+  const editedPaths: string[] = []
+  const deletedPaths: string[] = []
+
+  // 1. Parse edits
+  const editRegex = /<edit_file\s+path=["']([^"']+)["'][^>]*>[\s\S]*?<\/edit_file>/gi
+  let editMatch: RegExpExecArray | null
+  while ((editMatch = editRegex.exec(raw)) !== null) {
+    editedPaths.push(editMatch[1].trim())
   }
 
-  // Strip all <edit_file> blocks from display text
+  // 2. Parse deletes
+  const deleteRegex = /<delete_file\s+path=["']([^"']+)["'][^>]*\/>/gi
+  let deleteMatch: RegExpExecArray | null
+  while ((deleteMatch = deleteRegex.exec(raw)) !== null) {
+    deletedPaths.push(deleteMatch[1].trim())
+  }
+
+  // Strip all edit and delete tags/blocks from display text
   const displayText = raw
     .replace(/<edit_file\s+path=["'][^"']+["'][^>]*>[\s\S]*?<\/edit_file>/gi, '')
+    .replace(/<delete_file\s+path=["'][^"']+["'][^>]*\/>/gi, '')
     // Clean up leftover blank lines from removal
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 
-  return { displayText, editedPaths }
+  return { displayText, editedPaths, deletedPaths }
 }
 
 function parseUserContent(rawContent: string) {
@@ -59,9 +75,9 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPr
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
 
-  const { displayText, editedPaths } = isAssistant
-    ? extractFileEdits(message.content)
-    : { displayText: message.content, editedPaths: [] }
+  const { displayText, editedPaths, deletedPaths } = isAssistant
+    ? extractFileActions(message.content)
+    : { displayText: message.content, editedPaths: [], deletedPaths: [] }
 
   const { isJson, parsed } = parseUserContent(message.content)
 
@@ -69,6 +85,8 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPr
   const userDisplayText = isUser
     ? message.content.split('\n\n[Project:')[0].split('\n\nCurrently open file')[0]
     : displayText
+
+  const totalActions = editedPaths.length + deletedPaths.length
 
   return (
     <div className="group flex w-full flex-col gap-2 px-4 py-4 sm:px-6 hover:bg-muted/30 transition-colors border-b border-border/40 last:border-0">
@@ -162,20 +180,28 @@ export function MessageBubble({ message, isStreaming, onRegenerate, isLast, onPr
             </ReactMarkdown>
             {isStreaming && <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-primary" />}
 
-            {/* Files Changed Card — shown only when AI applied file edits */}
-            {!isStreaming && editedPaths.length > 0 && (
+            {/* Files Changed Card — shown only when AI executed actions */}
+            {!isStreaming && totalActions > 0 && (
               <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 className="size-4 text-emerald-400 shrink-0" />
                   <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                    {editedPaths.length} file{editedPaths.length > 1 ? 's' : ''} updated
+                    {totalActions} project action{totalActions > 1 ? 's' : ''} applied
                   </span>
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
                   {editedPaths.map((p, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <FileCode2 className="size-3 shrink-0 text-emerald-500/70" />
+                    <div key={`edit-${i}`} className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <FileCode2 className="size-3.5 shrink-0 text-emerald-500/70" />
                       <span className="font-mono truncate">{p.split('/').slice(-2).join('/')}</span>
+                      <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1 rounded">updated</span>
+                    </div>
+                  ))}
+                  {deletedPaths.map((p, i) => (
+                    <div key={`del-${i}`} className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Trash2 className="size-3.5 shrink-0 text-rose-500/70" />
+                      <span className="font-mono truncate line-through opacity-70">{p.split('/').slice(-2).join('/')}</span>
+                      <span className="text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-1 rounded">deleted</span>
                     </div>
                   ))}
                 </div>

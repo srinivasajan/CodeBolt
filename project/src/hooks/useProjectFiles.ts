@@ -108,6 +108,32 @@ export function useProjectFiles() {
     })
   }, [])
 
+  const deleteFile = useCallback((path: string) => {
+    let resolvedKey: string | null = null
+    setFiles(prev => {
+      let key = path
+      if (!prev[path]) {
+        const fuzzyKey = Object.keys(prev).find(k =>
+          k.endsWith('/' + path) || k === path || k.endsWith(path)
+        )
+        if (fuzzyKey) key = fuzzyKey
+      }
+      if (prev[key]) {
+        resolvedKey = key
+        const next = { ...prev }
+        delete next[key]
+        return next
+      }
+      return prev
+    })
+    // If the active file was deleted, clear it or open another one
+    setActiveFile(prev => {
+      if (!prev || !resolvedKey) return prev
+      if (prev.path === resolvedKey) return null
+      return prev
+    })
+  }, [])
+
   const clearProject = useCallback(() => {
     setFiles({})
     setActiveFile(null)
@@ -126,6 +152,7 @@ export function useProjectFiles() {
     loadFiles,
     openFile,
     updateFile,
+    deleteFile,
     clearProject,
     setActiveFile,
     getLanguage,
