@@ -21,7 +21,7 @@ import type { Chat } from '@/types'
 import { NVIDIA_MODELS } from '@/types'
 import { supabase } from '@/lib/supabase'
 import JSZip from 'jszip'
-import { parseFileEdits, buildProjectSystemPrompt, buildFileContext } from '@/lib/fileEdits'
+import { parseFileEdits } from '@/lib/fileEdits'
 
 export default function ChatApp() {
   const navigate = useNavigate()
@@ -115,12 +115,21 @@ export default function ChatApp() {
         return
       }
 
-      // Inject project file context into the message when in IDE mode with files loaded
+      // In IDE mode, inject smart context: the currently open file + file list (paths only)
+      // We do NOT inject all file contents to avoid crashing the browser with huge payloads
       let messageContent = content
       if (isIdeMode && fileList.length > 0) {
-        // Append file contents for context (capped to avoid token overflow)
-        const fileCtx = buildFileContext(fileList, 6000)
-        messageContent = content + fileCtx
+        const pathList = fileList.map(f => `  ${f.path}`).join('\n')
+        let ctx = `\n\n[Project: ${projectName} — ${fileList.length} files]\nFiles:\n${pathList}`
+        // Inject active file content if one is open
+        if (activeFile) {
+          const cap = 12000
+          const snippet = activeFile.content.length > cap
+            ? activeFile.content.slice(0, cap) + '\n... [truncated]'
+            : activeFile.content
+          ctx += `\n\nCurrently open file — ${activeFile.path}:\n\`\`\`\n${snippet}\n\`\`\``
+        }
+        messageContent = content + ctx
       }
 
       sendMessage(
@@ -138,23 +147,26 @@ export default function ChatApp() {
         }
       )
     },
-    [activeChatId, activeModel, sendMessage, updateChatTitle, isIdeMode, fileList, updateFile]
+    [activeChatId, activeModel, sendMessage, updateChatTitle, isIdeMode, fileList, activeFile, projectName, updateFile]
   )
 
   const handleRegenerate = useCallback(() => {
     regenerateLastResponse(activeModel)
   }, [activeModel, regenerateLastResponse])
 
-  // Dynamically inject project context into system prompt when project is loaded
+  // Inject project file list into system prompt ONCE when a new project is loaded
+  // (react only on projectName change, not every fileList mutation)
   useEffect(() => {
-    if (!isIdeMode || fileList.length === 0) return
-    const projectSuffix = buildProjectSystemPrompt(fileList)
+    if (!isIdeMode || !projectName || fileList.length === 0) return
+    // Only include file paths (not contents) in system prompt — safe size
+    const pathList = fileList.slice(0, 200).map(f => `  ${f.path}`).join('\n')
+    const suffix = `\n\n---\n## Active Project: ${projectName} (${fileList.length} files)\nFiles:\n${pathList}\n\nWhen asked to edit files, output changes using:\n<edit_file path="exact/file/path">\ncomplete new file content\n</edit_file>\n---`
     setSettings(prev => {
-      // Don't repeatedly append — replace any existing project suffix
       const base = prev.systemPrompt.split('\n\n---\n## Active Project:')[0]
-      return { ...prev, systemPrompt: base + projectSuffix }
+      return { ...prev, systemPrompt: base + suffix }
     })
-  }, [isIdeMode, fileList, setSettings])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isIdeMode, projectName]) // intentionally NOT including fileList to avoid re-runs
 
   const handleLogout = () => {
     localStorage.removeItem('VITE_NVIDIA_API_KEY')
@@ -256,38 +268,46 @@ export default function ChatApp() {
 
   // Process files selected via webkitdirectory input
   const handleFolderInput = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? [])
-    if (!e.target.value) return
-    e.target.value = ''
-    if (files.length === 0) return
+    const rawFiles = Array.from(e.target.files ?? [])
+    if (e.target.value) e.target.value = ''
+    if (rawFiles.length === 0) return
 
-    const skipExts = /\.(png|jpg|jpeg|gif|ico|pdf|zip|tar|gz|mp4|webm|mp3|wav|ogg|wasm|exe|bin|dll|so|dylib)$/i
-    const skipDirs = new Set(['node_modules', '.git', '.next', 'dist', 'build', '__pycache__', '.cache'])
-    const allFiles: import('@/hooks/useProjectFiles').VirtualFile[] = []
+    const MAX_FILES = 300
+    const MAX_FILE_BYTES = 500_000 // 500 KB per file
+    const skipExts = /\.(png|jpg|jpeg|gif|ico|pdf|zip|tar|gz|mp4|webm|mp3|wav|ogg|wasm|exe|bin|dll|so|dylib|lock)$/i
+    const skipDirs = new Set(['node_modules', '.git', '.next', 'dist', 'build', '__pycache__', '.cache', 'vendor', 'coverage'])
 
-    // Detect root folder name from the first file's path
-    const firstPath = (files[0] as any).webkitRelativePath as string || files[0].name
+    const firstPath = (rawFiles[0] as any).webkitRelativePath as string || rawFiles[0].name
     const rootName = firstPath.split('/')[0]
 
-    for (const file of files) {
+    const allFiles: import('@/hooks/useProjectFiles').VirtualFile[] = []
+    let skipped = 0
+
+    for (const file of rawFiles) {
+      if (allFiles.length >= MAX_FILES) { skipped++; continue }
+      if (file.size > MAX_FILE_BYTES) { skipped++; continue }
+
       const relPath = (file as any).webkitRelativePath as string || file.name
       const parts = relPath.split('/')
-      // Skip hidden dirs and build dirs
-      if (parts.some(p => skipDirs.has(p) || p.startsWith('.'))) continue
-      if (skipExts.test(file.name)) continue
+      if (parts.some(p => skipDirs.has(p) || (p.startsWith('.') && p.length > 1))) { skipped++; continue }
+      if (skipExts.test(file.name)) { skipped++; continue }
+
       try {
         const content = await file.text()
         allFiles.push({ path: relPath, name: file.name, content })
       } catch {
-        // skip unreadable files (binary, etc.)
+        skipped++
       }
     }
 
     if (allFiles.length > 0) {
       loadFiles(allFiles, rootName)
-      toast.success(`Loaded ${allFiles.length} files from "${rootName}"`)
+      const msg = skipped > 0
+        ? `Loaded ${allFiles.length} files from "${rootName}" (${skipped} skipped — too large or binary)`
+        : `Loaded ${allFiles.length} files from "${rootName}"`
+      toast.success(msg)
     } else {
-      toast.error('No readable text files found in that folder')
+      toast.error('No readable text files found — check that the folder has source code files')
     }
   }, [loadFiles])
 

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 
 export interface VirtualFile {
   path: string
@@ -86,25 +86,28 @@ export function useProjectFiles() {
   }, [files])
 
   const updateFile = useCallback((path: string, content: string) => {
+    let resolvedKey: string | null = null
     setFiles(prev => {
-      // Try exact match first
       if (prev[path]) {
-        const updated = { ...prev, [path]: { ...prev[path], content } }
-        setActiveFile(af => af?.path === path ? { ...af, content } : af)
-        return updated
+        resolvedKey = path
+        return { ...prev, [path]: { ...prev[path], content } }
       }
-      // Fuzzy: find a key that ends with the given path (handles root prefix differences)
       const fuzzyKey = Object.keys(prev).find(k =>
         k.endsWith('/' + path) || k === path || k.endsWith(path)
       )
       if (fuzzyKey) {
-        const updated = { ...prev, [fuzzyKey]: { ...prev[fuzzyKey], content } }
-        setActiveFile(af => af?.path === fuzzyKey ? { ...af, content } : af)
-        return updated
+        resolvedKey = fuzzyKey
+        return { ...prev, [fuzzyKey]: { ...prev[fuzzyKey], content } }
       }
-      // New file — add it
+      // New file
+      resolvedKey = path
       const name = path.split('/').pop() ?? path
       return { ...prev, [path]: { path, name, content } }
+    })
+    // Update activeFile separately — cannot call setState inside setState updater
+    setActiveFile(prev => {
+      if (!resolvedKey) return prev
+      return prev?.path === resolvedKey ? { ...prev, content } : prev
     })
   }, [])
 
@@ -114,8 +117,8 @@ export function useProjectFiles() {
     setProjectName('')
   }, [])
 
-  const fileTree = buildFileTree(Object.values(files))
-  const fileList = Object.values(files)
+  const fileTree = useMemo(() => buildFileTree(Object.values(files)), [files])
+  const fileList = useMemo(() => Object.values(files), [files])
 
   return {
     files,
