@@ -260,6 +260,25 @@ export default function ChatApp() {
     toast.success('Chat branched successfully!')
   }, [activeChatId, activeChat, messages, createChat, renameChat])
 
+  // Download all in-memory project files as a ZIP
+  const handleDownload = useCallback(async () => {
+    if (fileList.length === 0) return
+    try {
+      const zip = new JSZip()
+      fileList.forEach(f => zip.file(f.path, f.content))
+      const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${projectName || 'project'}.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success(`Downloaded ${fileList.length} files as ${projectName || 'project'}.zip`)
+    } catch {
+      toast.error('Failed to create ZIP')
+    }
+  }, [fileList, projectName])
+
   // Open Folder handler - triggers webkitdirectory input (most reliable cross-browser)
   const handleOpenFolder = useCallback(() => {
     folderInputRef.current?.click()
@@ -468,6 +487,7 @@ export default function ChatApp() {
                      onFileOpen={setActiveFile}
                      onOpenFolder={handleOpenFolder}
                      onClearProject={clearProject}
+                     onDownload={handleDownload}
                    />
                  </div>
 

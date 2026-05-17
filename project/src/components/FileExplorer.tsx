@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   ChevronRight, ChevronDown, FileText, Folder, FolderOpen,
-  FolderInput, RotateCcw, FolderPlus
+  FolderInput, RotateCcw, FolderPlus, Download
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -16,6 +16,7 @@ interface FileExplorerProps {
   onFileOpen: (file: VirtualFile) => void
   onOpenFolder: () => void
   onClearProject: () => void
+  onDownload: () => void
 }
 
 function getFileIcon(name: string) {
@@ -99,6 +100,7 @@ export function FileExplorer({
   onFileOpen,
   onOpenFolder,
   onClearProject,
+  onDownload,
 }: FileExplorerProps) {
   const hasFiles = fileTree.length > 0
 
@@ -112,31 +114,34 @@ export function FileExplorer({
         <div className="flex items-center gap-0.5">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={onOpenFolder}
-                className="size-6 text-muted-foreground hover:text-foreground"
-              >
+              <Button variant="ghost" size="icon-xs" onClick={onOpenFolder}
+                className="size-6 text-muted-foreground hover:text-foreground">
                 <FolderInput className="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Open Folder / Upload ZIP</TooltipContent>
           </Tooltip>
           {hasFiles && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={onClearProject}
-                  className="size-6 text-muted-foreground hover:text-destructive"
-                >
-                  <RotateCcw className="size-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Close Project</TooltipContent>
-            </Tooltip>
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon-xs" onClick={onDownload}
+                    className="size-6 text-muted-foreground hover:text-emerald-400">
+                    <Download className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Download Project as ZIP</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon-xs" onClick={onClearProject}
+                    className="size-6 text-muted-foreground hover:text-destructive">
+                    <RotateCcw className="size-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Close Project</TooltipContent>
+              </Tooltip>
+            </>
           )}
         </div>
       </div>
