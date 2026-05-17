@@ -202,8 +202,8 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
   }
 
   return (
-    <div className="bg-background px-4 py-4">
-      <div className="mx-auto max-w-4xl">
+    <div className="bg-transparent px-4">
+      <div className="mx-auto max-w-3xl">
         {(images.length > 0 || attachedFiles.length > 0) && (
           <div className="mb-3 flex flex-wrap gap-2">
             {images.map((img, idx) => (
@@ -236,8 +236,8 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, placeholder }
         
         <div
           className={cn(
-            'flex items-end gap-2 rounded-md border border-border/60 bg-background transition-colors',
-            'focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20',
+            'flex items-end gap-2 rounded-3xl border border-border/40 bg-card/50 shadow-sm transition-colors py-1',
+            'focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/20',
             disabled && 'opacity-60'
           )}
         >

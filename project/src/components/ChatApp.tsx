@@ -215,122 +215,140 @@ export default function ChatApp() {
   return (
     <TooltipProvider>
       <div className="flex h-screen w-full overflow-hidden text-foreground bg-background">
-        {/* Activity Bar */}
-        <div className="flex w-12 flex-col items-center border-r border-border bg-sidebar-accent/50 py-3 z-20 shrink-0">
-          <Link to="/" className="mb-4 flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm">
-            <Zap className="size-4" />
-          </Link>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="size-10 rounded-md bg-sidebar-accent text-sidebar-accent-foreground">
-                <MessageSquare className="size-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">Explorer</TooltipContent>
-          </Tooltip>
-          
-          <div className="mt-auto flex flex-col gap-2 items-center">
-            <SettingsPanel settings={settings} onChange={setSettings} disabled={isStreaming} />
-            <Button variant="ghost" size="icon-sm" onClick={handleLogout} className="size-10 rounded-md text-muted-foreground hover:text-foreground" title="Logout">
-              <LogOut className="size-5" />
-            </Button>
+        
+        {/* Left Sidebar (History) */}
+        <div className={cn("flex flex-col border-r border-border bg-sidebar z-10 shrink-0 transition-all duration-300", sidebarCollapsed ? "w-0 border-0" : "w-64")}>
+          <div className="flex h-14 shrink-0 items-center justify-between border-b border-border/40 px-4">
+             <span className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground">Recent</span>
+             <Tooltip>
+               <TooltipTrigger asChild>
+                 <Button variant="ghost" size="icon-sm" onClick={handleNewChat} className="size-7 text-sidebar-foreground/80 hover:text-sidebar-foreground">
+                   <Plus className="size-4" />
+                 </Button>
+               </TooltipTrigger>
+               <TooltipContent>New chat (Ctrl+N)</TooltipContent>
+             </Tooltip>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <ChatSidebar
+              chats={chats}
+              activeChatId={activeChatId}
+              onSelect={handleSelectChat}
+              onCreate={handleNewChat}
+              onDelete={handleDeleteChat}
+              onRename={renameChat}
+              collapsed={false}
+              onToggleCollapse={() => {}}
+            />
           </div>
         </div>
 
-        {/* Primary Sidebar (Explorer) */}
-        <div className="flex w-64 flex-col border-r border-border bg-sidebar z-10 shrink-0">
-          <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60">
-            Explorer
-          </div>
-          <ChatSidebar
-            chats={chats}
-            activeChatId={activeChatId}
-            onSelect={handleSelectChat}
-            onCreate={handleNewChat}
-            onDelete={handleDeleteChat}
-            onRename={renameChat}
-            collapsed={false}
-            onToggleCollapse={() => {}}
-          />
-        </div>
+        {/* Main Content Area (Chat + Split View) */}
+        <div className="flex flex-1 flex-col overflow-hidden relative">
+           {/* Top Header */}
+           <div className="flex h-14 shrink-0 items-center justify-between border-b border-border/40 px-4 bg-background/80 backdrop-blur-md z-10">
+              <div className="flex items-center gap-2">
+                 <Tooltip>
+                   <TooltipTrigger asChild>
+                     <Button variant="ghost" size="icon-sm" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="size-8 text-muted-foreground">
+                       <LayoutTemplate className="size-4" />
+                     </Button>
+                   </TooltipTrigger>
+                   <TooltipContent>Toggle Sidebar</TooltipContent>
+                 </Tooltip>
+                 <div className="flex items-center gap-2 rounded-full border border-border/50 bg-card/30 px-3 py-1.5 shadow-sm ml-2">
+                    <Zap className="size-3.5 text-primary" />
+                    <span className="text-sm font-bold tracking-wide">CODEBOLT</span>
+                 </div>
+                 <div className="ml-2">
+                    <ModelSelector
+                       value={activeModel}
+                       onChange={handleModelChange}
+                       disabled={!activeChatId || isStreaming}
+                     />
+                 </div>
+                 {isStreaming && (
+                  <div className="flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-2.5 py-1.5 text-xs shadow-sm ml-2">
+                    <span className="relative flex size-2">
+                      <span className="absolute inline-flex size-full rounded-full bg-emerald-400 opacity-70 animate-ping" />
+                      <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+                    </span>
+                    <span className="text-muted-foreground">Generating…</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                 <Tooltip>
+                   <TooltipTrigger asChild>
+                     <Button
+                       variant="ghost"
+                       size="icon-sm"
+                       onClick={handleExportChat}
+                       disabled={!activeChatId || messages.length === 0}
+                       className="size-8 text-muted-foreground hover:text-foreground"
+                     >
+                       <DownloadCloud className="size-4" />
+                     </Button>
+                   </TooltipTrigger>
+                   <TooltipContent>Export Chat</TooltipContent>
+                 </Tooltip>
+                 <SettingsPanel settings={settings} onChange={setSettings} disabled={isStreaming} />
+                 <Button variant="ghost" size="icon-sm" onClick={handleLogout} className="size-8 text-muted-foreground hover:text-foreground">
+                   <LogOut className="size-4" />
+                 </Button>
+              </div>
+           </div>
 
-        {/* Editor Area */}
-        <div className="flex flex-1 flex-col overflow-hidden bg-background relative z-0">
-          {/* Editor Tabs */}
-          <div className="flex h-9 shrink-0 items-end border-b border-border bg-muted/20 px-2 overflow-x-auto pt-1">
-             {previewCode ? (
-               <div className="flex h-8 items-center border-t border-x border-border bg-background px-4 text-xs font-medium text-foreground relative top-px rounded-t-sm">
-                 <Code2 className="mr-2 size-3.5 text-blue-400"/> preview.tsx
-                 <button onClick={() => setPreviewCode(null)} className="ml-2 rounded-sm p-0.5 hover:bg-muted text-muted-foreground">
-                   <X className="size-3" />
-                 </button>
-               </div>
-             ) : (
-               <div className="flex h-8 items-center border-t border-x border-transparent bg-transparent hover:bg-muted/50 px-4 text-xs font-medium text-muted-foreground relative top-px rounded-t-sm transition-colors cursor-default">
-                 <Code2 className="mr-2 size-3.5 opacity-50"/> Welcome
+           {/* Workspace Area */}
+           <div className="flex flex-1 overflow-hidden">
+             
+             {/* Center Chat Area */}
+             <div className="flex flex-1 flex-col h-full items-center bg-background/50">
+                <div className="w-full max-w-4xl flex-1 flex flex-col relative">
+                   <ChatArea
+                     messages={messages}
+                     isStreaming={isStreaming}
+                     streamingContent={streamingContent}
+                     chatId={activeChatId}
+                     onRegenerate={handleRegenerate}
+                     onPreview={(code) => setPreviewCode(code)}
+                     onFork={handleForkChat}
+                   />
+                   <div className="px-4 pb-6 w-full">
+                     <ChatInput
+                       onSend={handleSend}
+                       onStop={stopStreaming}
+                       isStreaming={isStreaming}
+                       disabled={!activeChatId}
+                       placeholder={
+                         activeChatId
+                           ? 'Message CODEBOLT...'
+                           : 'Create a new chat...'
+                       }
+                     />
+                   </div>
+                </div>
+             </div>
+
+             {/* Right Artifact Panel */}
+             {previewCode && (
+               <div className="w-[50%] border-l border-border/60 flex flex-col h-full bg-background shadow-2xl shrink-0 transition-all">
+                 <div className="flex h-12 shrink-0 items-center justify-between border-b border-border/50 px-4 bg-muted/10">
+                   <div className="flex items-center gap-2">
+                     <Code2 className="size-4 text-blue-400" />
+                     <span className="text-sm font-medium">Artifact Preview</span>
+                   </div>
+                   <Button variant="ghost" size="icon-sm" onClick={() => setPreviewCode(null)} className="size-7 text-muted-foreground">
+                     <X className="size-4" />
+                   </Button>
+                 </div>
+                 <div className="flex-1 overflow-hidden relative">
+                   <CodePreviewPanel code={previewCode} onClose={() => setPreviewCode(null)} />
+                 </div>
                </div>
              )}
-          </div>
-          
-          <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-background">
-            {previewCode ? (
-              <CodePreviewPanel code={previewCode} onClose={() => setPreviewCode(null)} />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground/30 gap-4 select-none">
-                <Code2 className="size-32 opacity-10" />
-                <p className="text-sm font-medium tracking-widest opacity-50">NO EDITOR OPEN</p>
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Secondary Sidebar (AI Assistant) */}
-        <div className="w-[400px] flex flex-col border-l border-border bg-sidebar z-10 shrink-0">
-          <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-4 bg-muted/20">
-             <span className="text-[11px] font-semibold text-sidebar-foreground/60 uppercase tracking-wider">AI Assistant</span>
-             <div className="flex items-center gap-1">
-               <ModelSelector
-                 value={activeModel}
-                 onChange={handleModelChange}
-                 disabled={!activeChatId || isStreaming}
-               />
-               <Tooltip>
-                 <TooltipTrigger asChild>
-                   <Button
-                     variant="ghost"
-                     size="icon-xs"
-                     onClick={handleExportChat}
-                     disabled={!activeChatId || messages.length === 0}
-                     className="size-6 text-muted-foreground hover:text-foreground"
-                   >
-                     <DownloadCloud className="size-3.5" />
-                   </Button>
-                 </TooltipTrigger>
-                 <TooltipContent>Export Chat</TooltipContent>
-               </Tooltip>
-             </div>
-          </div>
-          
-          <ChatArea
-            messages={messages}
-            isStreaming={isStreaming}
-            streamingContent={streamingContent}
-            chatId={activeChatId}
-            onRegenerate={handleRegenerate}
-            onPreview={(code) => setPreviewCode(code)}
-            onFork={handleForkChat}
-          />
-          <ChatInput
-            onSend={handleSend}
-            onStop={stopStreaming}
-            isStreaming={isStreaming}
-            disabled={!activeChatId}
-            placeholder={
-              activeChatId
-                ? 'Message CODEBOLT...'
-                : 'Create a new chat...'
-            }
-          />
+           </div>
         </div>
       </div>
       <Toaster />
