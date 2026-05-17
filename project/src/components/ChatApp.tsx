@@ -21,6 +21,7 @@ import type { Chat } from '@/types'
 import { NVIDIA_MODELS } from '@/types'
 import { supabase } from '@/lib/supabase'
 import JSZip from 'jszip'
+import { parseFileEdits, buildProjectSystemPrompt, buildFileContext } from '@/lib/fileEdits'
 
 export default function ChatApp() {
   const navigate = useNavigate()
@@ -32,8 +33,8 @@ export default function ChatApp() {
   const zipInputRef = useRef<HTMLInputElement>(null)
 
   const {
-    fileTree, activeFile, projectName,
-    loadFiles, clearProject, setActiveFile
+    fileTree, activeFile, projectName, fileList,
+    loadFiles, clearProject, setActiveFile, updateFile
   } = useProjectFiles()
 
   const {
@@ -113,16 +114,47 @@ export default function ChatApp() {
         toast.error('Please select or create a chat first')
         return
       }
-      sendMessage(content, activeModel, (title) => {
-        updateChatTitle(activeChatId, title)
-      }, images)
+
+      // Inject project file context into the message when in IDE mode with files loaded
+      let messageContent = content
+      if (isIdeMode && fileList.length > 0) {
+        // Append file contents for context (capped to avoid token overflow)
+        const fileCtx = buildFileContext(fileList, 6000)
+        messageContent = content + fileCtx
+      }
+
+      sendMessage(
+        messageContent,
+        activeModel,
+        (title) => { updateChatTitle(activeChatId, title) },
+        images,
+        // Auto-apply file edits when stream completes
+        (fullResponse) => {
+          const edits = parseFileEdits(fullResponse)
+          if (edits.length > 0) {
+            edits.forEach(edit => updateFile(edit.path, edit.content))
+            toast.success(`✅ Applied ${edits.length} file edit${edits.length > 1 ? 's' : ''}`)
+          }
+        }
+      )
     },
-    [activeChatId, activeModel, sendMessage, updateChatTitle]
+    [activeChatId, activeModel, sendMessage, updateChatTitle, isIdeMode, fileList, updateFile]
   )
 
   const handleRegenerate = useCallback(() => {
     regenerateLastResponse(activeModel)
   }, [activeModel, regenerateLastResponse])
+
+  // Dynamically inject project context into system prompt when project is loaded
+  useEffect(() => {
+    if (!isIdeMode || fileList.length === 0) return
+    const projectSuffix = buildProjectSystemPrompt(fileList)
+    setSettings(prev => {
+      // Don't repeatedly append — replace any existing project suffix
+      const base = prev.systemPrompt.split('\n\n---\n## Active Project:')[0]
+      return { ...prev, systemPrompt: base + projectSuffix }
+    })
+  }, [isIdeMode, fileList, setSettings])
 
   const handleLogout = () => {
     localStorage.removeItem('VITE_NVIDIA_API_KEY')

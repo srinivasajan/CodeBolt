@@ -29,7 +29,7 @@ export function useMessages(chatId: string | null) {
   }, [chatId])
 
   const sendMessage = useCallback(
-    async (content: string, model: string, onTitleUpdate?: (title: string) => void, images?: string[]) => {
+    async (content: string, model: string, onTitleUpdate?: (title: string) => void, images?: string[], onStreamDone?: (fullContent: string) => void) => {
       if (!chatId || isStreaming) return
 
       let finalContent = content
@@ -102,6 +102,8 @@ export function useMessages(chatId: string | null) {
               role: 'assistant',
               content: fullContent,
             })
+            // Callback so ChatApp can parse file edits from the response
+            onStreamDone?.(fullContent)
           }
         },
         (error) => {

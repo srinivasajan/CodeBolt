@@ -87,10 +87,25 @@ export function useProjectFiles() {
 
   const updateFile = useCallback((path: string, content: string) => {
     setFiles(prev => {
-      const updated = { ...prev, [path]: { ...prev[path], content } }
-      return updated
+      // Try exact match first
+      if (prev[path]) {
+        const updated = { ...prev, [path]: { ...prev[path], content } }
+        setActiveFile(af => af?.path === path ? { ...af, content } : af)
+        return updated
+      }
+      // Fuzzy: find a key that ends with the given path (handles root prefix differences)
+      const fuzzyKey = Object.keys(prev).find(k =>
+        k.endsWith('/' + path) || k === path || k.endsWith(path)
+      )
+      if (fuzzyKey) {
+        const updated = { ...prev, [fuzzyKey]: { ...prev[fuzzyKey], content } }
+        setActiveFile(af => af?.path === fuzzyKey ? { ...af, content } : af)
+        return updated
+      }
+      // New file — add it
+      const name = path.split('/').pop() ?? path
+      return { ...prev, [path]: { path, name, content } }
     })
-    setActiveFile(prev => prev?.path === path ? { ...prev, content } : prev)
   }, [])
 
   const clearProject = useCallback(() => {
