@@ -28,7 +28,6 @@ export default function ChatApp() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [isIdeMode, setIsIdeMode] = useState(false)
   const [previewCode, setPreviewCode] = useState<string | null>(null)
-  const folderInputRef = useRef<HTMLInputElement>(null)
   const zipInputRef = useRef<HTMLInputElement>(null)
 
   const {
