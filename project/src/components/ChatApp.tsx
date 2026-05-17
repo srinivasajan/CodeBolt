@@ -28,6 +28,7 @@ export default function ChatApp() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [isIdeMode, setIsIdeMode] = useState(false)
   const [previewCode, setPreviewCode] = useState<string | null>(null)
+  const folderInputRef = useRef<HTMLInputElement>(null)
   const zipInputRef = useRef<HTMLInputElement>(null)
 
   const {
@@ -216,47 +217,46 @@ export default function ChatApp() {
     toast.success('Chat branched successfully!')
   }, [activeChatId, activeChat, messages, createChat, renameChat])
 
-  // Open Folder handler - supports File System Access API + ZIP fallback
-  const handleOpenFolder = useCallback(async () => {
-    // Try File System Access API first (Chrome/Edge)
-    if ('showDirectoryPicker' in window) {
+  // Open Folder handler - triggers webkitdirectory input (most reliable cross-browser)
+  const handleOpenFolder = useCallback(() => {
+    folderInputRef.current?.click()
+  }, [])
+
+  // Process files selected via webkitdirectory input
+  const handleFolderInput = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (!e.target.value) return
+    e.target.value = ''
+    if (files.length === 0) return
+
+    const skipExts = /\.(png|jpg|jpeg|gif|ico|pdf|zip|tar|gz|mp4|webm|mp3|wav|ogg|wasm|exe|bin|dll|so|dylib)$/i
+    const skipDirs = new Set(['node_modules', '.git', '.next', 'dist', 'build', '__pycache__', '.cache'])
+    const allFiles: import('@/hooks/useProjectFiles').VirtualFile[] = []
+
+    // Detect root folder name from the first file's path
+    const firstPath = (files[0] as any).webkitRelativePath as string || files[0].name
+    const rootName = firstPath.split('/')[0]
+
+    for (const file of files) {
+      const relPath = (file as any).webkitRelativePath as string || file.name
+      const parts = relPath.split('/')
+      // Skip hidden dirs and build dirs
+      if (parts.some(p => skipDirs.has(p) || p.startsWith('.'))) continue
+      if (skipExts.test(file.name)) continue
       try {
-        const dirHandle = await (window as any).showDirectoryPicker()
-        const allFiles: import('@/hooks/useProjectFiles').VirtualFile[] = []
-        const skipExts = /\.(png|jpg|jpeg|gif|ico|pdf|zip|tar|gz|mp4|webm|mp3|wav|ogg|wasm|exe|bin|dll|so|dylib)$/i
-        const skipDirs = new Set(['node_modules', '.git', '.next', 'dist', 'build', '__pycache__'])
-
-        async function readDir(handle: any, basePath: string) {
-          for await (const [name, entry] of handle.entries()) {
-            if (entry.kind === 'directory') {
-              if (!skipDirs.has(name)) await readDir(entry, basePath ? `${basePath}/${name}` : name)
-            } else if (!skipExts.test(name)) {
-              const file = await entry.getFile()
-              const content = await file.text()
-              const path = basePath ? `${basePath}/${name}` : name
-              allFiles.push({ path, name, content })
-            }
-          }
-        }
-
-        await readDir(dirHandle, '')
-        if (allFiles.length > 0) {
-          loadFiles(allFiles, dirHandle.name)
-          toast.success(`Loaded ${allFiles.length} files from "${dirHandle.name}"`)
-        } else {
-          toast.error('No readable files found in folder')
-        }
-        return
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
-          // Fallback to ZIP input
-          zipInputRef.current?.click()
-        }
-        return
+        const content = await file.text()
+        allFiles.push({ path: relPath, name: file.name, content })
+      } catch {
+        // skip unreadable files (binary, etc.)
       }
     }
-    // Fallback: click ZIP/folder input
-    zipInputRef.current?.click()
+
+    if (allFiles.length > 0) {
+      loadFiles(allFiles, rootName)
+      toast.success(`Loaded ${allFiles.length} files from "${rootName}"`)
+    } else {
+      toast.error('No readable text files found in that folder')
+    }
   }, [loadFiles])
 
   const handleZipInput = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -533,7 +533,16 @@ export default function ChatApp() {
         </div>
       </div>
 
-      {/* Hidden ZIP input for fallback folder loading */}
+      {/* Hidden folder input (webkitdirectory) - selects entire local folder */}
+      <input
+        ref={folderInputRef}
+        type="file"
+        {...{ webkitdirectory: 'true', multiple: true } as any}
+        className="hidden"
+        onChange={handleFolderInput}
+      />
+
+      {/* Hidden ZIP input */}
       <input
         ref={zipInputRef}
         type="file"
